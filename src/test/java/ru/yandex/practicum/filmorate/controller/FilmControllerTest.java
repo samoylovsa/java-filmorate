@@ -105,7 +105,7 @@ class FilmControllerTest {
         film.setId(999);
 
         assertThrowsValidationException(
-                "Фильм не найден",
+                "Не найден фильм с ID: " + film.getId(),
                 () -> filmController.updateFilm(film)
         );
     }

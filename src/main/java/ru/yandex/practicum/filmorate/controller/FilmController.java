@@ -39,7 +39,7 @@ public class FilmController {
         log.info("Получен запрос на обновление фильма с ID: {}", film.getId());
         try {
             if (film.getId() == null || !films.containsKey(film.getId())) {
-                throw new ValidationException("Фильм не найден");
+                throw new ValidationException("Не найден фильм с ID: " + film.getId());
             }
             validateFilm(film);
             films.put(film.getId(), film);
