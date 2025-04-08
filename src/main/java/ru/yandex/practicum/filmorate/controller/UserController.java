@@ -24,10 +24,7 @@ public class UserController {
         try {
             validateUser(user);
             user.setId(idCounter++);
-            if (user.getName() == null || user.getName().isBlank()) {
-                user.setName(user.getLogin());
-                log.debug("Для пользователя {} установлено имя из логина", user.getLogin());
-            }
+            setNameFromLoginIfEmpty(user);
             users.put(user.getId(), user);
             log.info("Создан новый пользователь с ID: {}", user.getId());
             return user;
@@ -45,6 +42,7 @@ public class UserController {
                 throw new ValidationException("Пользователь не найден");
             }
             validateUser(user);
+            setNameFromLoginIfEmpty(user);
             users.put(user.getId(), user);
             log.info("Пользователь с ID {} успешно обновлен", user.getId());
             return user;
@@ -77,5 +75,12 @@ public class UserController {
             throw new ValidationException("Дата рождения не может быть в будущем");
         }
         log.debug("Валидация пользователя пройдена успешно");
+    }
+
+    private void setNameFromLoginIfEmpty(User user) {
+        if (user.getName() == null || user.getName().isBlank()) {
+            user.setName(user.getLogin());
+            log.debug("Для пользователя {} установлено имя из логина", user.getLogin());
+        }
     }
 }
