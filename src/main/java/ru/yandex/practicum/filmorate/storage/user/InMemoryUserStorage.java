@@ -3,20 +3,17 @@ package ru.yandex.practicum.filmorate.storage.user;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
-import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.model.user.User;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Component
 public class InMemoryUserStorage implements UserStorage {
 
-    private int idCounter = 1;
-    private final Map<Integer, User> users = new HashMap<>();
+    private Long idCounter = 1L;
+    private final Map<Long, User> users = new HashMap<>();
 
     @Override
     public User addUser(User user) {
@@ -53,6 +50,11 @@ public class InMemoryUserStorage implements UserStorage {
     @Override
     public List<User> findAllUsers() {
         return new ArrayList<>(users.values());
+    }
+
+    @Override
+    public Optional<User> findUserById(Long userId) {
+        return Optional.ofNullable(users.get(userId));
     }
 
     private void validateUser(User user) {
