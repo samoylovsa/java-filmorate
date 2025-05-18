@@ -52,10 +52,6 @@ public class UserService {
         User friend = userStorage.findUserById(friendId)
                 .orElseThrow(() -> new NotFoundException("Пользователь с ID " + friendId + " не найден"));
 
-        if (!user.getFriends().contains(friendId)) {
-            throw new ValidationException("Пользователи не являются друзьями");
-        }
-
         user.getFriends().remove(friendId);
         friend.getFriends().remove(userId);
 
