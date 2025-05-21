@@ -6,17 +6,14 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.film.Film;
 
 import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.ArrayList;
+import java.util.*;
 
 @Slf4j
 @Component
 public class InMemoryFilmStorage implements FilmStorage {
 
-    private int idCounter = 1;
-    private final Map<Integer, Film> films = new HashMap<>();
+    private Long idCounter = 1L;
+    private final Map<Long, Film> films = new HashMap<>();
     private static final LocalDate CINEMA_BIRTHDAY = LocalDate.of(1895, 12, 28);
 
     @Override
@@ -52,6 +49,11 @@ public class InMemoryFilmStorage implements FilmStorage {
     @Override
     public List<Film> findAllFilms() {
         return new ArrayList<>(films.values());
+    }
+
+    @Override
+    public Optional<Film> findFilmById(Long filmId) {
+        return Optional.ofNullable(films.get(filmId));
     }
 
     private void validateFilm(Film film) {
