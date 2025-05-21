@@ -17,7 +17,7 @@ public class FilmService {
     UserStorage userStorage;
 
     @Autowired
-    FilmService(FilmStorage filmStorage, UserStorage userStorage) {
+    public FilmService(FilmStorage filmStorage, UserStorage userStorage) {
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
     }
