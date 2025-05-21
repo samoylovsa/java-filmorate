@@ -19,7 +19,7 @@ public class FilmController {
     FilmService filmService;
 
     @Autowired
-    FilmController(FilmStorage filmStorage, FilmService filmService) {
+    public FilmController(FilmStorage filmStorage, FilmService filmService) {
         this.filmStorage = filmStorage;
         this.filmService = filmService;
     }
