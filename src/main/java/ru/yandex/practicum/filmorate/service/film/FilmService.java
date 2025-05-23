@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.film.Film;
+import ru.yandex.practicum.filmorate.model.user.User;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
@@ -35,11 +36,9 @@ public class FilmService {
     }
 
     public void addLike(Long filmId, Long userId) {
-        Film film = filmStorage.findFilmById(filmId)
-                .orElseThrow(() -> new NotFoundException("Фильм с ID " + filmId + " не найден"));
+        Film film = findFilmById(filmId);
 
-        userStorage.findUserById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с ID " + userId + " не найден"));
+        findUserById(userId);
 
         if (film.getLikedUserIds().contains(userId)) {
             throw new ValidationException("Пользователь " + userId + " уже лайкнул этот фильм");
@@ -51,11 +50,9 @@ public class FilmService {
     }
 
     public void deleteLike(Long filmId, Long userId) {
-        Film film = filmStorage.findFilmById(filmId)
-                .orElseThrow(() -> new NotFoundException("Фильм с ID " + filmId + " не найден"));
+        Film film = findFilmById(filmId);
 
-        userStorage.findUserById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с ID " + userId + " не найден"));
+        findUserById(userId);
 
         if (!film.getLikedUserIds().contains(userId)) {
             throw new ValidationException("Пользователь " + userId + " не лайкал этот фильм или уже удалил лайк");
@@ -71,20 +68,16 @@ public class FilmService {
             throw new ValidationException("Параметр count должен быть положительным числом");
         }
 
-        List<Film> allFilms = filmStorage.findAllFilms();
+        return filmStorage.findTopPopularFilms(count);
+    }
 
-        List<Film> sortedFilms = allFilms.stream()
-                .sorted((f1, f2) -> {
-                    int compare = Integer.compare(
-                            f2.getLikedUserIds().size(),
-                            f1.getLikedUserIds().size()
-                    );
-                    return compare != 0 ? compare : Long.compare(f1.getId(), f2.getId());
-                })
-                .toList();
+    private Film findFilmById(Long filmId) {
+        return filmStorage.findFilmById(filmId)
+                .orElseThrow(() -> new NotFoundException("Фильм с ID " + filmId + " не найден"));
+    }
 
-        return sortedFilms.stream()
-                .limit(count)
-                .toList();
+    private User findUserById(Long userId) {
+        return userStorage.findUserById(userId)
+                .orElseThrow(() -> new NotFoundException("Пользователь с ID " + userId + " не найден"));
     }
 }
