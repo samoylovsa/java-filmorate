@@ -42,7 +42,7 @@ class FilmControllerTest {
         filmStorage = new InMemoryFilmStorage();
         userStorage = new InMemoryUserStorage();
         filmService = new FilmService(filmStorage, userStorage);
-        filmController = new FilmController(filmStorage, filmService);
+        filmController = new FilmController(filmService);
         film = createTestFilm("Inception", "A movie about dreams", 148);
     }
 

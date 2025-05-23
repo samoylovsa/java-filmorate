@@ -22,6 +22,18 @@ public class FilmService {
         this.userStorage = userStorage;
     }
 
+    public Film addFilm(Film film) {
+        return filmStorage.addFilm(film);
+    }
+
+    public Film updateFilm(Film film) {
+        return filmStorage.updateFilm(film);
+    }
+
+    public List<Film> findAllFilms() {
+        return filmStorage.findAllFilms();
+    }
+
     public void addLike(Long filmId, Long userId) {
         Film film = filmStorage.findFilmById(filmId)
                 .orElseThrow(() -> new NotFoundException("Фильм с ID " + filmId + " не найден"));

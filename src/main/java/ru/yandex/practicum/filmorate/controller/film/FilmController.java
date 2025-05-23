@@ -6,7 +6,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.film.Film;
 import ru.yandex.practicum.filmorate.service.film.FilmService;
-import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 
 import java.util.List;
 
@@ -15,31 +14,29 @@ import java.util.List;
 @RequestMapping("/films")
 public class FilmController {
 
-    FilmStorage filmStorage;
-    FilmService filmService;
+    private FilmService filmService;
 
     @Autowired
-    public FilmController(FilmStorage filmStorage, FilmService filmService) {
-        this.filmStorage = filmStorage;
+    public FilmController(FilmService filmService) {
         this.filmService = filmService;
     }
 
     @PostMapping
     public Film addFilm(@RequestBody Film film) {
         log.info("Получен запрос на добавление фильма: {}", film);
-        return filmStorage.addFilm(film);
+        return filmService.addFilm(film);
     }
 
     @PutMapping
     public Film updateFilm(@RequestBody Film film) {
         log.info("Получен запрос на обновление фильма с ID: {}", film.getId());
-        return filmStorage.updateFilm(film);
+        return filmService.updateFilm(film);
     }
 
     @GetMapping
     public List<Film> getAllFilms() {
         log.info("Получен запрос на список всех фильмов.");
-        return filmStorage.findAllFilms();
+        return filmService.findAllFilms();
     }
 
     @PutMapping("/{id}/like/{userId}")
