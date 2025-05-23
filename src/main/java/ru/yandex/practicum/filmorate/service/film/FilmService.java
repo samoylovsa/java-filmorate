@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.service.film;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
@@ -9,13 +10,17 @@ import ru.yandex.practicum.filmorate.model.user.User;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
+import java.time.LocalDate;
 import java.util.List;
 
+@Slf4j
 @Service
 public class FilmService {
 
     private FilmStorage filmStorage;
     private UserStorage userStorage;
+
+    private static final LocalDate CINEMA_BIRTHDAY = LocalDate.of(1895, 12, 28);
 
     @Autowired
     public FilmService(FilmStorage filmStorage, UserStorage userStorage) {
@@ -24,10 +29,12 @@ public class FilmService {
     }
 
     public Film addFilm(Film film) {
+        validateFilm(film);
         return filmStorage.addFilm(film);
     }
 
     public Film updateFilm(Film film) {
+        validateFilm(film);
         return filmStorage.updateFilm(film);
     }
 
@@ -89,5 +96,27 @@ public class FilmService {
         if (count <= 0) {
             throw new ValidationException("Параметр count должен быть положительным числом");
         }
+    }
+
+    private void validateFilm(Film film) {
+        log.debug("Начало валидации фильма: {}", film);
+        if (film.getName() == null || film.getName().isBlank()) {
+            log.error("Ошибка валидации фильма: название не может быть пустым");
+            throw new ValidationException("Название фильма не может быть пустым");
+        }
+        if (film.getDescription() != null && film.getDescription().length() > 200) {
+            log.error("Превышена длина описания фильма ({} символов). Максимум 200",
+                    film.getDescription().length());
+            throw new ValidationException("Максимальная длина описания — 200 символов");
+        }
+        if (film.getReleaseDate() == null || film.getReleaseDate().isBefore(CINEMA_BIRTHDAY)) {
+            log.error("Некорректная дата релиза фильма: {}", film.getReleaseDate());
+            throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
+        }
+        if (film.getDuration() == null || film.getDuration() <= 0) {
+            log.error("Некорректная продолжительность фильма: {}", film.getDuration());
+            throw new ValidationException("Продолжительность фильма должна быть положительным числом");
+        }
+        log.debug("Валидация фильма пройдена успешно");
     }
 }
