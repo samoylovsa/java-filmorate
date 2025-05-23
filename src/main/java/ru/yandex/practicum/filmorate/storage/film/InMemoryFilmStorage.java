@@ -19,6 +19,7 @@ public class InMemoryFilmStorage implements FilmStorage {
         film.setId(idCounter++);
         films.put(film.getId(), film);
         log.info("Добавлен новый фильм с ID: {}", film.getId());
+
         return film;
     }
 
@@ -29,6 +30,7 @@ public class InMemoryFilmStorage implements FilmStorage {
         }
         films.put(film.getId(), film);
         log.info("Фильм с ID {} успешно обновлен", film.getId());
+
         return film;
     }
 

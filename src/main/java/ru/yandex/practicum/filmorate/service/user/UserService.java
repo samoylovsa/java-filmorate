@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.service.user;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
@@ -7,9 +8,11 @@ import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.user.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class UserService {
 
@@ -21,10 +24,14 @@ public class UserService {
     }
 
     public User addUser(User user) {
+        validateUser(user);
+
         return userStorage.addUser(user);
     }
 
     public User updateUser(User user) {
+        validateUser(user);
+
         return userStorage.updateUser(user);
     }
 
@@ -60,6 +67,7 @@ public class UserService {
 
     public List<User> getFriends(Long userId) {
         User user = findUserById(userId);
+
         return getFriendsList(user.getFriends());
     }
 
@@ -121,6 +129,24 @@ public class UserService {
         commonIds.retainAll(friends2);
 
         return getFriendsList(commonIds);
+    }
 
+    private void validateUser(User user) {
+        log.debug("Начало валидации пользователя: {}", user);
+        if (user.getEmail() == null || user.getEmail().isBlank() || !user.getEmail().contains("@")) {
+            log.error("Некорректный email пользователя: {}", user.getEmail());
+            throw new ValidationException("Электронная почта не может быть пустой и должна содержать @");
+        }
+
+        if (user.getLogin() == null || user.getLogin().isBlank() || user.getLogin().contains(" ")) {
+            log.error("Некорректный логин пользователя: '{}'", user.getLogin());
+            throw new ValidationException("Логин не может быть пустым и содержать пробелы");
+        }
+
+        if (user.getBirthday() != null && user.getBirthday().isAfter(LocalDate.now())) {
+            log.error("Дата рождения пользователя в будущем: {}", user.getBirthday());
+            throw new ValidationException("Дата рождения не может быть в будущем");
+        }
+        log.debug("Валидация пользователя пройдена успешно");
     }
 }

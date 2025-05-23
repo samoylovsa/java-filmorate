@@ -30,11 +30,13 @@ public class FilmService {
 
     public Film addFilm(Film film) {
         validateFilm(film);
+
         return filmStorage.addFilm(film);
     }
 
     public Film updateFilm(Film film) {
         validateFilm(film);
+
         return filmStorage.updateFilm(film);
     }
 
