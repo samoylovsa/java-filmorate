@@ -57,6 +57,17 @@ public class InMemoryFilmStorage implements FilmStorage {
         return Optional.ofNullable(films.get(filmId));
     }
 
+    @Override
+    public List<Film> findTopPopularFilms(int count) {
+        return films.values().stream()
+                .sorted(Comparator
+                        .comparingInt((Film f) -> f.getLikedUserIds().size()).reversed()
+                        .thenComparing(Film::getId)
+                )
+                .limit(count)
+                .toList();
+    }
+
     private void validateFilm(Film film) {
         log.debug("Начало валидации фильма: {}", film);
         if (film.getName() == null || film.getName().isBlank()) {
