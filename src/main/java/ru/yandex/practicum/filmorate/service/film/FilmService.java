@@ -37,12 +37,9 @@ public class FilmService {
 
     public void addLike(Long filmId, Long userId) {
         Film film = findFilmById(filmId);
+        validateUserExists(userId);
 
-        findUserById(userId);
-
-        if (film.getLikedUserIds().contains(userId)) {
-            throw new ValidationException("Пользователь " + userId + " уже лайкнул этот фильм");
-        }
+        validateNotLiked(film, userId);
 
         film.getLikedUserIds().add(userId);
 
@@ -51,12 +48,9 @@ public class FilmService {
 
     public void deleteLike(Long filmId, Long userId) {
         Film film = findFilmById(filmId);
+        validateUserExists(userId);
 
-        findUserById(userId);
-
-        if (!film.getLikedUserIds().contains(userId)) {
-            throw new ValidationException("Пользователь " + userId + " не лайкал этот фильм или уже удалил лайк");
-        }
+        validateLiked(film, userId);
 
         film.getLikedUserIds().remove(userId);
 
@@ -64,9 +58,7 @@ public class FilmService {
     }
 
     public List<Film> getTopPopularFilms(int count) {
-        if (count <= 0) {
-            throw new ValidationException("Параметр count должен быть положительным числом");
-        }
+        validateCountParameter(count);
 
         return filmStorage.findTopPopularFilms(count);
     }
@@ -76,8 +68,26 @@ public class FilmService {
                 .orElseThrow(() -> new NotFoundException("Фильм с ID " + filmId + " не найден"));
     }
 
-    private User findUserById(Long userId) {
+    private User validateUserExists(Long userId) {
         return userStorage.findUserById(userId)
                 .orElseThrow(() -> new NotFoundException("Пользователь с ID " + userId + " не найден"));
+    }
+
+    private void validateNotLiked(Film film, Long userId) {
+        if (film.getLikedUserIds().contains(userId)) {
+            throw new ValidationException("Пользователь " + userId + " уже лайкнул этот фильм");
+        }
+    }
+
+    private void validateLiked(Film film, Long userId) {
+        if (!film.getLikedUserIds().contains(userId)) {
+            throw new ValidationException("Пользователь " + userId + " не лайкал этот фильм или уже удалил лайк");
+        }
+    }
+
+    private void validateCountParameter(int count) {
+        if (count <= 0) {
+            throw new ValidationException("Параметр count должен быть положительным числом");
+        }
     }
 }
