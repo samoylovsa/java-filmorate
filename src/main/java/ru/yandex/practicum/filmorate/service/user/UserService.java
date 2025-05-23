@@ -33,90 +33,94 @@ public class UserService {
     }
 
     public void addFriend(Long userId, Long friendId) {
-        if (userId.equals(friendId)) {
-            throw new ValidationException("Нельзя добавить самого себя в друзья");
-        }
+        validateNotSameUser(userId, friendId);
 
-        User user = userStorage.findUserById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с ID " + userId + " не найден"));
-        User friend = userStorage.findUserById(friendId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с ID " + friendId + " не найден"));
+        User user = findUserById(userId);
+        User friend = findUserById(friendId);
 
         if (user.getFriends().contains(friendId)) {
             throw new ValidationException("Пользователи уже являются друзьями");
         }
 
-        user.getFriends().add(friendId);
-        friend.getFriends().add(userId);
+        addMutualFriendship(user, friend);
 
-        userStorage.updateUser(user);
-        userStorage.updateUser(friend);
+        saveUsers(user, friend);
     }
 
     public void deleteFriend(Long userId, Long friendId) {
-        if (userId.equals(friendId)) {
-            throw new ValidationException("Нельзя удалить самого себя из друзей");
-        }
+        validateNotSameUser(userId, friendId);
 
-        User user = userStorage.findUserById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с ID " + userId + " не найден"));
+        User user = findUserById(userId);
+        User friend = findUserById(friendId);
 
-        User friend = userStorage.findUserById(friendId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с ID " + friendId + " не найден"));
+        removeMutualFriendship(user, friend);
 
-        user.getFriends().remove(friendId);
-        friend.getFriends().remove(userId);
-
-        userStorage.updateUser(user);
-        userStorage.updateUser(friend);
+        saveUsers(user, friend);
     }
 
     public List<User> getFriends(Long userId) {
-        User user = userStorage.findUserById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с ID " + userId + " не найден"));
-
-        Set<Long> friendsIds = user.getFriends();
-
-        if (friendsIds == null || friendsIds.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<User> friends = new ArrayList<>();
-        for (Long friendId : friendsIds) {
-            userStorage.findUserById(friendId)
-                    .ifPresent(friends::add);
-        }
-
-        return friends;
+        User user = findUserById(userId);
+        return getFriendsList(user.getFriends());
     }
 
     public List<User> getCommonFriends(Long userId, Long otherUserId) {
-        if (userId.equals(otherUserId)) {
-            throw new ValidationException("Нельзя искать общих друзей с самим собой");
-        }
+        validateNotSameUser(userId, otherUserId);
 
-        User user = userStorage.findUserById(userId)
+        User user = findUserById(userId);
+        User otherUser = findUserById(otherUserId);
+
+        return findCommonFriends(user.getFriends(), otherUser.getFriends());
+    }
+
+    private void validateNotSameUser(Long firstUser, Long secondUser) {
+        if (firstUser.equals(secondUser)) {
+            throw new ValidationException("Нельзя выполнить операцию с самим собой");
+        }
+    }
+
+    private User findUserById(Long userId) {
+        return userStorage.findUserById(userId)
                 .orElseThrow(() -> new NotFoundException("Пользователь с ID " + userId + " не найден"));
 
-        User otherUser = userStorage.findUserById(otherUserId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с ID " + otherUserId + " не найден"));
+    }
 
-        Set<Long> userFriends = user.getFriends();
-        Set<Long> otherUserFriends = otherUser.getFriends();
+    private void addMutualFriendship(User user, User friend) {
+        user.getFriends().add(friend.getId());
+        friend.getFriends().add(user.getId());
+    }
 
-        if (userFriends.isEmpty() || otherUserFriends.isEmpty()) {
+    private void removeMutualFriendship(User user, User friend) {
+        user.getFriends().remove(friend.getId());
+        friend.getFriends().remove(user.getId());
+    }
+
+    private void saveUsers(User... users) {
+        for (User user : users) {
+            userStorage.updateUser(user);
+        }
+    }
+
+    private List<User> getFriendsList(Set<Long> friendIds) {
+        if (friendIds == null || friendIds.isEmpty()) {
             return Collections.emptyList();
         }
 
-        Set<Long> commonFriendIds = new HashSet<>(userFriends);
-        commonFriendIds.retainAll(otherUserFriends);
-
-        List<User> commonFriends = commonFriendIds.stream()
+        return friendIds.stream()
                 .map(userStorage::findUserById)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(Collectors.toList());
+    }
 
-        return commonFriends;
+    private List<User> findCommonFriends(Set<Long> friends1, Set<Long> friends2) {
+        if (friends1.isEmpty() || friends2.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<Long> commonIds = new HashSet<>(friends1);
+        commonIds.retainAll(friends2);
+
+        return getFriendsList(commonIds);
+
     }
 }
