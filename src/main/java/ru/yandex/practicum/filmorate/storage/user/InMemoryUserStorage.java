@@ -1,14 +1,17 @@
 package ru.yandex.practicum.filmorate.storage.user;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.user.User;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
+@Qualifier("inMemoryUserStorage")
 public class InMemoryUserStorage implements UserStorage {
 
     private Long idCounter = 1L;
@@ -16,22 +19,22 @@ public class InMemoryUserStorage implements UserStorage {
 
     @Override
     public User addUser(User user) {
-        user.setId(idCounter++);
+        user.setUserId(idCounter++);
         setNameFromLoginIfEmpty(user);
-        users.put(user.getId(), user);
-        log.info("Создан новый пользователь с ID: {}", user.getId());
+        users.put(user.getUserId(), user);
+        log.info("Создан новый пользователь с ID: {}", user.getUserId());
 
         return user;
     }
 
     @Override
     public User updateUser(User user) {
-        if (user.getId() == null || !users.containsKey(user.getId())) {
+        if (user.getUserId() == null || !users.containsKey(user.getUserId())) {
             throw new NotFoundException("Пользователь не найден");
         }
         setNameFromLoginIfEmpty(user);
-        users.put(user.getId(), user);
-        log.info("Пользователь с ID {} успешно обновлен", user.getId());
+        users.put(user.getUserId(), user);
+        log.info("Пользователь с ID {} успешно обновлен", user.getUserId());
 
         return user;
     }
@@ -44,6 +47,24 @@ public class InMemoryUserStorage implements UserStorage {
     @Override
     public Optional<User> findUserById(Long userId) {
         return Optional.ofNullable(users.get(userId));
+    }
+
+    @Override
+    public List<User> findUsersByIds(Collection<Long> ids) {
+        return ids.stream()
+                .map(users::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Map<Long, Set<Long>> getFriendships(Set<Long> userIds) {
+        return users.values().stream()
+                .filter(user -> userIds.contains(user.getUserId()))
+                .collect(Collectors.toMap(
+                        User::getUserId,
+                        User::getFriends
+                ));
     }
 
     private void setNameFromLoginIfEmpty(User user) {

@@ -29,7 +29,7 @@ public class UserController {
 
     @PutMapping
     public User updateUser(@RequestBody User user) {
-        log.info("Получен запрос на обновление пользователя с ID: {}", user.getId());
+        log.info("Получен запрос на обновление пользователя с ID: {}", user.getUserId());
         return userService.updateUser(user);
     }
 
