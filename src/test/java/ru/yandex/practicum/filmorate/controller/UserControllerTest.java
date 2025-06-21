@@ -35,7 +35,7 @@ class UserControllerTest {
     void addUserTest() {
         User user = userController.addUser(this.user);
 
-        assertNotNull(user.getId());
+        assertNotNull(user.getUserId());
         assertEquals("validLogin", user.getLogin());
     }
 
@@ -108,7 +108,7 @@ class UserControllerTest {
 
     @Test
     void updateUserWithNonExistingIdTest() {
-        user.setId(999L);
+        user.setUserId(999L);
 
         NotFoundException exception = assertThrows(NotFoundException.class,
                 () -> userController.updateUser(user));
