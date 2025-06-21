@@ -1,14 +1,17 @@
 package ru.yandex.practicum.filmorate.storage.user;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.user.User;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
+@Qualifier("inMemoryUserStorage")
 public class InMemoryUserStorage implements UserStorage {
 
     private Long idCounter = 1L;
@@ -44,6 +47,24 @@ public class InMemoryUserStorage implements UserStorage {
     @Override
     public Optional<User> findUserById(Long userId) {
         return Optional.ofNullable(users.get(userId));
+    }
+
+    @Override
+    public List<User> findUsersByIds(Collection<Long> ids) {
+        return ids.stream()
+                .map(users::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Map<Long, Set<Long>> getFriendships(Set<Long> userIds) {
+        return users.values().stream()
+                .filter(user -> userIds.contains(user.getUserId()))
+                .collect(Collectors.toMap(
+                        User::getUserId,
+                        User::getFriends
+                ));
     }
 
     private void setNameFromLoginIfEmpty(User user) {
