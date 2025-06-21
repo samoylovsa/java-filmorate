@@ -16,22 +16,22 @@ public class InMemoryUserStorage implements UserStorage {
 
     @Override
     public User addUser(User user) {
-        user.setId(idCounter++);
+        user.setUserId(idCounter++);
         setNameFromLoginIfEmpty(user);
-        users.put(user.getId(), user);
-        log.info("Создан новый пользователь с ID: {}", user.getId());
+        users.put(user.getUserId(), user);
+        log.info("Создан новый пользователь с ID: {}", user.getUserId());
 
         return user;
     }
 
     @Override
     public User updateUser(User user) {
-        if (user.getId() == null || !users.containsKey(user.getId())) {
+        if (user.getUserId() == null || !users.containsKey(user.getUserId())) {
             throw new NotFoundException("Пользователь не найден");
         }
         setNameFromLoginIfEmpty(user);
-        users.put(user.getId(), user);
-        log.info("Пользователь с ID {} успешно обновлен", user.getId());
+        users.put(user.getUserId(), user);
+        log.info("Пользователь с ID {} успешно обновлен", user.getUserId());
 
         return user;
     }

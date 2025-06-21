@@ -93,13 +93,13 @@ public class UserService {
     }
 
     private void addMutualFriendship(User user, User friend) {
-        user.getFriends().add(friend.getId());
-        friend.getFriends().add(user.getId());
+        user.getFriends().add(friend.getUserId());
+        friend.getFriends().add(user.getUserId());
     }
 
     private void removeMutualFriendship(User user, User friend) {
-        user.getFriends().remove(friend.getId());
-        friend.getFriends().remove(user.getId());
+        user.getFriends().remove(friend.getUserId());
+        friend.getFriends().remove(user.getUserId());
     }
 
     private void saveUsers(User... users) {
