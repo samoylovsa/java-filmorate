@@ -50,7 +50,6 @@ CREATE TABLE IF NOT EXISTS "LIKE" (
 CREATE TABLE IF NOT EXISTS friendship (
     user_id BIGINT,
     friend_id BIGINT,
-    status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'CONFIRMED', 'REJECTED')),
     PRIMARY KEY (user_id, friend_id),
     FOREIGN KEY (user_id) REFERENCES "USER"(user_id) ON DELETE CASCADE,
     FOREIGN KEY (friend_id) REFERENCES "USER"(user_id) ON DELETE CASCADE,

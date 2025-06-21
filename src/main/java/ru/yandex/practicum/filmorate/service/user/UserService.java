@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.service.user;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
@@ -10,7 +11,6 @@ import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -19,7 +19,7 @@ public class UserService {
     private UserStorage userStorage;
 
     @Autowired
-    public UserService(UserStorage userStorage) {
+    public UserService(@Qualifier("userDbStorage") UserStorage userStorage) {
         this.userStorage = userStorage;
     }
 
@@ -49,86 +49,65 @@ public class UserService {
             throw new ValidationException("Пользователи уже являются друзьями");
         }
 
-        addMutualFriendship(user, friend);
+        user.getFriends().add(friend.getUserId());
 
-        saveUsers(user, friend);
+        userStorage.updateUser(user);
     }
 
     public void deleteFriend(Long userId, Long friendId) {
         validateNotSameUser(userId, friendId);
 
         User user = findUserById(userId);
-        User friend = findUserById(friendId);
 
-        removeMutualFriendship(user, friend);
+        Set<Long> updatedFriends = new HashSet<>(user.getFriends());
+        updatedFriends.remove(friendId);
 
-        saveUsers(user, friend);
+        User updatedUser = User.builder()
+                .userId(user.getUserId())
+                .email(user.getEmail())
+                .login(user.getLogin())
+                .name(user.getName())
+                .birthday(user.getBirthday())
+                .friends(updatedFriends)
+                .build();
+
+        userStorage.updateUser(updatedUser);
     }
 
     public List<User> getFriends(Long userId) {
         User user = findUserById(userId);
+        Set<Long> friends = user.getFriends();
 
-        return getFriendsList(user.getFriends());
+        if (friends == null || friends.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return userStorage.findUsersByIds(friends);
     }
 
     public List<User> getCommonFriends(Long userId, Long otherUserId) {
         validateNotSameUser(userId, otherUserId);
 
-        User user = findUserById(userId);
-        User otherUser = findUserById(otherUserId);
+        Map<Long, Set<Long>> friendsMap = userStorage.getFriendships(Set.of(userId, otherUserId));
 
-        return findCommonFriends(user.getFriends(), otherUser.getFriends());
+        Set<Long> userFriends = friendsMap.getOrDefault(userId, Collections.emptySet());
+        Set<Long> otherUserFriends = friendsMap.getOrDefault(otherUserId, Collections.emptySet());
+
+        Set<Long> commonIds = new HashSet<>(userFriends);
+        commonIds.retainAll(otherUserFriends);
+
+        return userStorage.findUsersByIds(commonIds);
+    }
+
+    private User findUserById(Long userId) {
+        return userStorage.findUserById(userId)
+                .orElseThrow(() -> new NotFoundException("Пользователь с ID " + userId + " не найден"));
     }
 
     private void validateNotSameUser(Long firstUser, Long secondUser) {
         if (firstUser.equals(secondUser)) {
             throw new ValidationException("Нельзя выполнить операцию с самим собой");
         }
-    }
-
-    private User findUserById(Long userId) {
-        return userStorage.findUserById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с ID " + userId + " не найден"));
-
-    }
-
-    private void addMutualFriendship(User user, User friend) {
-        user.getFriends().add(friend.getUserId());
-        friend.getFriends().add(user.getUserId());
-    }
-
-    private void removeMutualFriendship(User user, User friend) {
-        user.getFriends().remove(friend.getUserId());
-        friend.getFriends().remove(user.getUserId());
-    }
-
-    private void saveUsers(User... users) {
-        for (User user : users) {
-            userStorage.updateUser(user);
-        }
-    }
-
-    private List<User> getFriendsList(Set<Long> friendIds) {
-        if (friendIds == null || friendIds.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        return friendIds.stream()
-                .map(userStorage::findUserById)
-                .filter(Optional::isPresent)
-                .map(Optional::get)
-                .collect(Collectors.toList());
-    }
-
-    private List<User> findCommonFriends(Set<Long> friends1, Set<Long> friends2) {
-        if (friends1.isEmpty() || friends2.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        Set<Long> commonIds = new HashSet<>(friends1);
-        commonIds.retainAll(friends2);
-
-        return getFriendsList(commonIds);
     }
 
     private void validateUser(User user) {
