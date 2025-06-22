@@ -31,7 +31,7 @@ public class UserDbStorage implements UserStorage {
     public UserDbStorage(JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedJdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
         this.simpleJdbcInsert = new SimpleJdbcInsert(jdbcTemplate)
-                .withTableName("user")
+                .withTableName("users")
                 .usingGeneratedKeyColumns("user_id");
         this.namedJdbcTemplate = namedJdbcTemplate;
     }
@@ -60,15 +60,15 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public User updateUser(User user) {
-        String checkSql = "SELECT COUNT(*) FROM user WHERE id = ?";
-        boolean exists = jdbcTemplate.queryForObject(checkSql, Integer.class, user.getUserId()) > 0;
+        String checkSql = "SELECT COUNT(*) FROM users WHERE id = ?";
+        boolean exists = jdbcTemplate.queryForObject(checkSql, Long.class, user.getUserId()) > 0;
         if (!exists) {
             throw new NotFoundException("Пользователь с ID=" + user.getUserId() + " не найден");
         }
 
         setNameFromLoginIfEmpty(user);
 
-        String sqlQuery = "UPDATE user SET email = ?, login = ?, name = ?, birthday = ? WHERE user_id = ?";
+        String sqlQuery = "UPDATE users SET email = ?, login = ?, name = ?, birthday = ? WHERE user_id = ?";
         jdbcTemplate.update(sqlQuery,
                 user.getEmail(),
                 user.getLogin(),
@@ -84,7 +84,7 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public List<User> findAllUsers() {
-        String sqlQuery = "SELECT * FROM user";
+        String sqlQuery = "SELECT * FROM users";
         try {
             return jdbcTemplate.query(sqlQuery, this::mapRowToUser);
         } catch (DataAccessException e) {
@@ -95,7 +95,7 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public Optional<User> findUserById(Long userId) {
-        String sqlQuery = "SELECT * FROM user WHERE user_id = ?";
+        String sqlQuery = "SELECT * FROM users WHERE user_id = ?";
         try {
             User user = jdbcTemplate.queryForObject(sqlQuery, this::mapRowToUser, userId);
             return Optional.ofNullable(user);
@@ -120,7 +120,7 @@ public class UserDbStorage implements UserStorage {
     public Map<Long, Set<Long>> getFriendships(Set<Long> userIds) {
         if (userIds.isEmpty()) return Collections.emptyMap();
 
-        String sql = "SELECT user_id, friend_id FROM friendship WHERE user_id IN (:userIds)";
+        String sql = "SELECT user_id, friend_id FROM friendships WHERE user_id IN (:userIds)";
         Map<Long, Set<Long>> result = new HashMap<>();
 
         namedJdbcTemplate.query(sql, Map.of("userIds", userIds), rs -> {
@@ -144,7 +144,7 @@ public class UserDbStorage implements UserStorage {
 
         Set<Long> friends = new HashSet<>(
                 jdbcTemplate.queryForList(
-                        "SELECT friend_id FROM friendship WHERE user_id = ?",
+                        "SELECT friend_id FROM friendships WHERE user_id = ?",
                         Long.class,
                         userId
                 )
@@ -161,10 +161,10 @@ public class UserDbStorage implements UserStorage {
     }
 
     private void updateFriendsInDatabase(User user) {
-        jdbcTemplate.update("DELETE FROM friendship WHERE user_id = ?", user.getUserId());
+        jdbcTemplate.update("DELETE FROM friendships WHERE user_id = ?", user.getUserId());
 
         if (!user.getFriends().isEmpty()) {
-            String insertSql = "INSERT INTO friendship (user_id, friend_id) VALUES (?, ?)";
+            String insertSql = "INSERT INTO friendships (user_id, friend_id) VALUES (?, ?)";
             List<Object[]> batchArgs = user.getFriends().stream()
                     .map(friendId -> new Object[]{user.getUserId(), friendId})
                     .collect(Collectors.toList());
