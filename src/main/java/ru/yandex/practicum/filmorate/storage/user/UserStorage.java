@@ -17,4 +17,6 @@ public interface UserStorage {
     List<User> findUsersByIds(Collection<Long> ids);
 
     Map<Long, Set<Long>> getFriendships(Set<Long> userIds);
+
+    boolean friendshipExists(Long userId, Long friendId);
 }

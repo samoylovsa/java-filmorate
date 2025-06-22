@@ -132,6 +132,12 @@ public class UserDbStorage implements UserStorage {
         return result;
     }
 
+    @Override
+    public boolean friendshipExists(Long userId, Long friendId) {
+        String sql = "SELECT EXISTS(SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ?)";
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class, userId, friendId));
+    }
+
     private void setNameFromLoginIfEmpty(User user) {
         if (user.getName() == null || user.getName().isBlank()) {
             user.setName(user.getLogin());

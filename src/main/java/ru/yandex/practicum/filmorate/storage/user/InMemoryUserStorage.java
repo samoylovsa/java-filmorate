@@ -67,6 +67,15 @@ public class InMemoryUserStorage implements UserStorage {
                 ));
     }
 
+    @Override
+    public boolean friendshipExists(Long userId, Long friendId) {
+        User user = users.get(userId);
+
+        return user != null
+                && user.getFriends() != null
+                && user.getFriends().contains(friendId);
+    }
+
     private void setNameFromLoginIfEmpty(User user) {
         if (user.getName() == null || user.getName().isBlank()) {
             user.setName(user.getLogin());
