@@ -4,15 +4,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.dto.FilmRequest;
+import ru.yandex.practicum.filmorate.dto.FilmResponse;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.mapper.FilmMapper;
 import ru.yandex.practicum.filmorate.model.film.Film;
 import ru.yandex.practicum.filmorate.model.user.User;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -24,15 +29,31 @@ public class FilmService {
     private static final LocalDate CINEMA_BIRTHDAY = LocalDate.of(1895, 12, 28);
 
     @Autowired
-    public FilmService(FilmStorage filmStorage, @Qualifier("userDbStorage") UserStorage userStorage) {
+    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage,
+                       @Qualifier("userDbStorage") UserStorage userStorage
+    ) {
         this.filmStorage = filmStorage;
         this.userStorage = userStorage;
     }
 
-    public Film addFilm(Film film) {
-        validateFilm(film);
+    public FilmResponse addFilm(FilmRequest filmRequest) {
+        validateFilm(filmRequest);
 
-        return filmStorage.addFilm(film);
+        Film film = FilmMapper.mapToFilm(filmRequest);
+
+        film = filmStorage.addFilm(film);
+
+        boolean isGenresExist = filmRequest.getGenreIds() != null && !filmRequest.getGenreIds().isEmpty();
+
+        if (isGenresExist) {
+            filmStorage.addFilmGenres(film.getFilmId(), filmRequest.getGenreIds());
+        }
+
+        Set<Integer> genreIds = isGenresExist
+                ? filmStorage.getFilmGenres(film.getFilmId())
+                : Collections.emptySet();
+
+        return FilmMapper.mapToFilmResponse(film, genreIds);
     }
 
     public Film updateFilm(Film film) {
@@ -101,23 +122,23 @@ public class FilmService {
         }
     }
 
-    private void validateFilm(Film film) {
-        log.debug("Начало валидации фильма: {}", film);
-        if (film.getName() == null || film.getName().isBlank()) {
+    private void validateFilm(FilmRequest filmRequest) {
+        log.debug("Начало валидации фильма: {}", filmRequest);
+        if (filmRequest.getName() == null || filmRequest.getName().isBlank()) {
             log.error("Ошибка валидации фильма: название не может быть пустым");
             throw new ValidationException("Название фильма не может быть пустым");
         }
-        if (film.getDescription() != null && film.getDescription().length() > 200) {
+        if (filmRequest.getDescription() != null && filmRequest.getDescription().length() > 200) {
             log.error("Превышена длина описания фильма ({} символов). Максимум 200",
-                    film.getDescription().length());
+                    filmRequest.getDescription().length());
             throw new ValidationException("Максимальная длина описания — 200 символов");
         }
-        if (film.getReleaseDate() == null || film.getReleaseDate().isBefore(CINEMA_BIRTHDAY)) {
-            log.error("Некорректная дата релиза фильма: {}", film.getReleaseDate());
+        if (filmRequest.getReleaseDate() == null || filmRequest.getReleaseDate().isBefore(CINEMA_BIRTHDAY)) {
+            log.error("Некорректная дата релиза фильма: {}", filmRequest.getReleaseDate());
             throw new ValidationException("Дата релиза не может быть раньше 28 декабря 1895 года");
         }
-        if (film.getDuration() == null || film.getDuration() <= 0) {
-            log.error("Некорректная продолжительность фильма: {}", film.getDuration());
+        if (filmRequest.getDuration() == null || filmRequest.getDuration() <= 0) {
+            log.error("Некорректная продолжительность фильма: {}", filmRequest.getDuration());
             throw new ValidationException("Продолжительность фильма должна быть положительным числом");
         }
         log.debug("Валидация фильма пройдена успешно");
