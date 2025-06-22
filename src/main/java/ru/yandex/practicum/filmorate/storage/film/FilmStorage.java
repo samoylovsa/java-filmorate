@@ -18,7 +18,9 @@ public interface FilmStorage {
 
     List<Film> findTopPopularFilms(int count);
 
-    void addFilmGenres(Long filmId, Set<Integer> genreIds);
+    void updateFilmGenres(Long filmId, Set<Integer> genreIds);
 
     Set<Integer> getFilmGenres(Long filmId);
+
+    void deleteAllFilmGenres(Long filmId);
 }

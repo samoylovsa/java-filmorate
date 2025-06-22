@@ -40,15 +40,12 @@ public class FilmService {
         validateFilm(filmRequest);
 
         Film film = FilmMapper.mapToFilm(filmRequest);
-
         film = filmStorage.addFilm(film);
 
         boolean isGenresExist = filmRequest.getGenreIds() != null && !filmRequest.getGenreIds().isEmpty();
-
         if (isGenresExist) {
-            filmStorage.addFilmGenres(film.getFilmId(), filmRequest.getGenreIds());
+            filmStorage.updateFilmGenres(film.getFilmId(), filmRequest.getGenreIds());
         }
-
         Set<Integer> genreIds = isGenresExist
                 ? filmStorage.getFilmGenres(film.getFilmId())
                 : Collections.emptySet();
@@ -56,10 +53,24 @@ public class FilmService {
         return FilmMapper.mapToFilmResponse(film, genreIds);
     }
 
-    public Film updateFilm(Film film) {
-        validateFilm(film);
+    public FilmResponse updateFilm(FilmRequest filmRequest) {
+        validateFilm(filmRequest);
 
-        return filmStorage.updateFilm(film);
+        findFilmById(filmRequest.getId());
+        Film film = FilmMapper.mapToFilm(filmRequest);
+        film = filmStorage.updateFilm(film);
+
+        Set<Integer> genreIds = filmRequest.getGenreIds();
+        if (genreIds != null) {
+            if (genreIds.isEmpty()) {
+                filmStorage.deleteAllFilmGenres(film.getFilmId());
+            } else {
+                filmStorage.updateFilmGenres(film.getFilmId(), genreIds);
+            }
+        }
+        Set<Integer> currentGenres = filmStorage.getFilmGenres(film.getFilmId());
+
+        return FilmMapper.mapToFilmResponse(film, currentGenres);
     }
 
     public List<Film> findAllFilms() {
