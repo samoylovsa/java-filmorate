@@ -60,7 +60,7 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public User updateUser(User user) {
-        String checkSql = "SELECT COUNT(*) FROM users WHERE id = ?";
+        String checkSql = "SELECT COUNT(*) FROM users WHERE user_id = ?";
         boolean exists = jdbcTemplate.queryForObject(checkSql, Long.class, user.getUserId()) > 0;
         if (!exists) {
             throw new NotFoundException("Пользователь с ID=" + user.getUserId() + " не найден");
@@ -163,7 +163,7 @@ public class UserDbStorage implements UserStorage {
     private void updateFriendsInDatabase(User user) {
         jdbcTemplate.update("DELETE FROM friendships WHERE user_id = ?", user.getUserId());
 
-        if (!user.getFriends().isEmpty()) {
+        if (user.getFriends() != null && !user.getFriends().isEmpty()) {
             String insertSql = "INSERT INTO friendships (user_id, friend_id) VALUES (?, ?)";
             List<Object[]> batchArgs = user.getFriends().stream()
                     .map(friendId -> new Object[]{user.getUserId(), friendId})
