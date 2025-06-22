@@ -53,7 +53,7 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     @Override
-    public void addFilmGenres(Long filmId, Set<Integer> genreIds) {
+    public void updateFilmGenres(Long filmId, Set<Integer> genreIds) {
         jdbcTemplate.update("DELETE FROM film_genre WHERE film_id = ?", filmId);
 
         String sql = "INSERT INTO film_genre (film_id, genre_id) VALUES (?, ?) "
@@ -69,6 +69,12 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     @Override
+    public void deleteAllFilmGenres(Long filmId) {
+        jdbcTemplate.update("DELETE FROM film_genre WHERE film_id = ?", filmId);
+        log.debug("Удалены все жанры для фильма с ID: {}", filmId);
+    }
+
+    @Override
     public Set<Integer> getFilmGenres(Long filmId) {
         String sql = "SELECT genre_id FROM film_genre WHERE film_id = ?";
 
@@ -81,7 +87,19 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public Film updateFilm(Film film) {
-        return null;
+        String sqlQuery = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, rating_id = ? " +
+                "WHERE film_id = ?";
+        jdbcTemplate.update(sqlQuery,
+                film.getName(),
+                film.getDescription(),
+                film.getReleaseDate(),
+                film.getDuration(),
+                film.getMpaId(),
+                film.getFilmId()
+        );
+        log.info("Фильм с ID {} успешно обновлен", film.getFilmId());
+
+        return film;
     }
 
     @Override

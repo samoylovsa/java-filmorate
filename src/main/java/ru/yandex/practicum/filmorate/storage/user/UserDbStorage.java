@@ -60,6 +60,7 @@ public class UserDbStorage implements UserStorage {
 
     @Override
     public User updateUser(User user) {
+        //todo Вынести в сервисный слой
         String checkSql = "SELECT COUNT(*) FROM users WHERE user_id = ?";
         boolean exists = jdbcTemplate.queryForObject(checkSql, Long.class, user.getUserId()) > 0;
         if (!exists) {
