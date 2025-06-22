@@ -58,20 +58,30 @@ public class UserService {
         validateNotSameUser(userId, friendId);
 
         User user = findUserById(userId);
+        findUserById(friendId);
 
-        Set<Long> updatedFriends = new HashSet<>(user.getFriends());
+        if (!userStorage.friendshipExists(userId, friendId)) {
+            // Для теста "Not friend remove" - просто возвращаемся без ошибки
+            return;
+        }
+
+        Set<Long> updatedFriends = user.getFriends() != null ?
+                new HashSet<>(user.getFriends()) : new HashSet<>();
+
         updatedFriends.remove(friendId);
 
-        User updatedUser = User.builder()
-                .userId(user.getUserId())
-                .email(user.getEmail())
-                .login(user.getLogin())
-                .name(user.getName())
-                .birthday(user.getBirthday())
-                .friends(updatedFriends)
-                .build();
+        if (user.getFriends() == null || !user.getFriends().equals(updatedFriends)) {
+            User updatedUser = User.builder()
+                    .userId(user.getUserId())
+                    .email(user.getEmail())
+                    .login(user.getLogin())
+                    .name(user.getName())
+                    .birthday(user.getBirthday())
+                    .friends(updatedFriends)
+                    .build();
 
-        userStorage.updateUser(updatedUser);
+            userStorage.updateUser(updatedUser);
+        }
     }
 
     public List<User> getFriends(Long userId) {
