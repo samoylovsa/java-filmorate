@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.model.user;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
@@ -10,6 +11,7 @@ import java.util.Set;
 @Data
 @Builder
 public class User {
+    @JsonProperty("id")
     private Long userId;
     private String email;
     private String login;
