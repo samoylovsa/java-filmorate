@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.dto.FilmRequest;
+import ru.yandex.practicum.filmorate.dto.FilmResponse;
 import ru.yandex.practicum.filmorate.model.film.Film;
 import ru.yandex.practicum.filmorate.service.film.FilmService;
 
@@ -22,9 +24,9 @@ public class FilmController {
     }
 
     @PostMapping
-    public Film addFilm(@RequestBody Film film) {
-        log.info("Получен запрос на добавление фильма: {}", film);
-        return filmService.addFilm(film);
+    public FilmResponse addFilm(@RequestBody FilmRequest filmRequest) {
+        log.info("Получен запрос на добавление фильма: {}", filmRequest);
+        return filmService.addFilm(filmRequest);
     }
 
     @PutMapping
