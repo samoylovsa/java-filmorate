@@ -134,8 +134,59 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     @Override
-    public List<Film> findTopPopularFilms(int count) {
-        return List.of();
+    public List<Long> findTopPopularFilmIds(int count) {
+        String sql = """
+        SELECT film_id
+        FROM likes
+        GROUP BY film_id
+        ORDER BY COUNT(user_id) DESC, film_id DESC
+        LIMIT ?
+        """;
+
+        List<Long> topPopularFilmIds = jdbcTemplate.queryForList(sql, Long.class, count);
+
+        log.debug("Найден следующий список популярных фильмов: {}", topPopularFilmIds);
+        return topPopularFilmIds;
+    }
+
+    @Override
+    public boolean isFilmLikedByUser(Long filmId, Long userId) {
+        String sql = "SELECT EXISTS(SELECT 1 FROM likes WHERE film_id = ? AND user_id = ?)";
+        boolean result = Boolean.TRUE.equals(
+                jdbcTemplate.queryForObject(sql, Boolean.class, filmId, userId)
+        );
+
+        log.debug("Фильм с ID: {} уже лайкнут пользователем с ID: {}", filmId, userId);
+        return result;
+    }
+
+    @Override
+    public boolean addLike(Long filmId, Long userId) {
+        String sql = "INSERT INTO likes (film_id, user_id) VALUES (?, ?) " +
+                "ON CONFLICT (film_id, user_id) DO NOTHING";
+        int affectedRows = jdbcTemplate.update(sql, filmId, userId);
+
+        if (affectedRows > 0) {
+            log.debug("Фильму с ID: {} добавлен лайк пользователем с ID: {}", filmId, userId);
+        } else {
+            log.debug("Фильму с ID: {} НЕ добавлен лайк пользователем с ID: {}", filmId, userId);
+        }
+
+        return affectedRows > 0;
+    }
+
+    @Override
+    public boolean deleteLike(Long filmId, Long userId) {
+        String sql = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
+        int affectedRows = jdbcTemplate.update(sql, filmId, userId);
+
+        if (affectedRows > 0) {
+            log.debug("Фильму с ID: {} удалён лайк пользователем с ID: {}", filmId, userId);
+        } else {
+            log.debug("Фильму с ID: {} НЕ удалён лайк пользователем с ID: {}", filmId, userId);
+        }
+
+        return affectedRows > 0;
     }
 
     private Film mapRowToFilm(ResultSet rs, int rowNum) throws SQLException {

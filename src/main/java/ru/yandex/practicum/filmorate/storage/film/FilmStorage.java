@@ -16,11 +16,17 @@ public interface FilmStorage {
 
     Optional<Film> findFilmById(Long filmId);
 
-    List<Film> findTopPopularFilms(int count);
+    List<Long> findTopPopularFilmIds(int count);
 
     void updateFilmGenres(Long filmId, Set<Integer> genreIds);
 
     Set<Integer> getFilmGenres(Long filmId);
 
     void deleteAllFilmGenres(Long filmId);
+
+    boolean isFilmLikedByUser(Long filmId, Long userId);
+
+    boolean addLike(Long filmId, Long userId);
+
+    boolean deleteLike(Long filmId, Long userId);
 }
