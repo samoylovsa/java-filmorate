@@ -15,6 +15,7 @@ import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -68,13 +69,22 @@ public class FilmService {
                 filmStorage.updateFilmGenres(film.getFilmId(), genreIds);
             }
         }
-        Set<Integer> currentGenres = filmStorage.getFilmGenres(film.getFilmId());
+        Set<Integer> genresIds = filmStorage.getFilmGenres(film.getFilmId());
 
-        return FilmMapper.mapToFilmResponse(film, currentGenres);
+        return FilmMapper.mapToFilmResponse(film, genresIds);
     }
 
-    public List<Film> findAllFilms() {
-        return filmStorage.findAllFilms();
+    public List<FilmResponse> findAllFilms() {
+        List<Film> films = filmStorage.findAllFilms();
+        List<FilmResponse> listOfFilmResponse = new ArrayList<>(films.size());
+
+        for (Film film : films) {
+            Set<Integer> genres = filmStorage.getFilmGenres(film.getFilmId());
+            FilmResponse filmResponse = FilmMapper.mapToFilmResponse(film, genres);
+            listOfFilmResponse.add(filmResponse);
+        }
+
+        return listOfFilmResponse;
     }
 
     public void addLike(Long filmId, Long userId) {
