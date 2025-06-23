@@ -90,29 +90,41 @@ public class FilmService {
     public void addLike(Long filmId, Long userId) {
         Film film = findFilmById(filmId);
         validateUserExists(userId);
+        validateNotLiked(film.getFilmId(), userId);
 
-        validateNotLiked(film, userId);
-
-        film.getLikedUserIds().add(userId);
-
-        filmStorage.updateFilm(film);
+        filmStorage.addLike(film.getFilmId(), userId);
     }
 
     public void deleteLike(Long filmId, Long userId) {
-        Film film = findFilmById(filmId);
+        findFilmById(filmId);
         validateUserExists(userId);
+        validateLiked(filmId, userId);
 
-        validateLiked(film, userId);
-
-        film.getLikedUserIds().remove(userId);
-
-        filmStorage.updateFilm(film);
+        filmStorage.deleteLike(filmId, userId);
     }
 
-    public List<Film> getTopPopularFilms(int count) {
+    public List<FilmResponse> getTopPopularFilms(int count) {
         validateCountParameter(count);
 
-        return filmStorage.findTopPopularFilms(count);
+        List<Long> topFilmIds = filmStorage.findTopPopularFilmIds(count);
+        if (topFilmIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Film> popularFilms = new ArrayList<>(topFilmIds.size());
+        for (Long topFilmId : topFilmIds) {
+            Film film = findFilmById(topFilmId);
+            popularFilms.add(film);
+        }
+
+        List<FilmResponse> listOfFilmResponse = new ArrayList<>(popularFilms.size());
+        for (Film popularFilm : popularFilms) {
+            Set<Integer> genres = filmStorage.getFilmGenres(popularFilm.getFilmId());
+            FilmResponse filmResponse = FilmMapper.mapToFilmResponse(popularFilm, genres);
+            listOfFilmResponse.add(filmResponse);
+        }
+
+        return listOfFilmResponse;
     }
 
     private Film findFilmById(Long filmId) {
@@ -125,14 +137,14 @@ public class FilmService {
                 .orElseThrow(() -> new NotFoundException("Пользователь с ID " + userId + " не найден"));
     }
 
-    private void validateNotLiked(Film film, Long userId) {
-        if (film.getLikedUserIds().contains(userId)) {
+    private void validateNotLiked(Long filmId, Long userId) {
+        if (filmStorage.isFilmLikedByUser(filmId, userId)) {
             throw new ValidationException("Пользователь " + userId + " уже лайкнул этот фильм");
         }
     }
 
-    private void validateLiked(Film film, Long userId) {
-        if (!film.getLikedUserIds().contains(userId)) {
+    private void validateLiked(Long filmId, Long userId) {
+        if (!filmStorage.isFilmLikedByUser(filmId, userId)) {
             throw new ValidationException("Пользователь " + userId + " не лайкал этот фильм или уже удалил лайк");
         }
     }
