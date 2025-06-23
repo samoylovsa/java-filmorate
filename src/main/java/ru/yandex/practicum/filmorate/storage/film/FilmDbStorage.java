@@ -3,12 +3,16 @@ package ru.yandex.practicum.filmorate.storage.film;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.film.Film;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -104,16 +108,44 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public List<Film> findAllFilms() {
-        return List.of();
+        String sql = "SELECT film_id, name, description, release_date, duration, rating_id FROM films";
+        List<Film> films = jdbcTemplate.query(sql, this::mapRowToFilm);
+        log.debug("Найдены фильмы: {}", films);
+        return films;
     }
 
     @Override
     public Optional<Film> findFilmById(Long filmId) {
-        return Optional.empty();
+        String sql = "SELECT film_id, name, description, release_date, duration, rating_id " +
+                "FROM films WHERE film_id = ?";
+
+        try {
+            Film film = jdbcTemplate.queryForObject(
+                    sql,
+                    this::mapRowToFilm,
+                    filmId
+            );
+            log.debug("Найден фильм с ID: {}", filmId);
+            return Optional.ofNullable(film);
+        } catch (EmptyResultDataAccessException e) {
+            log.debug("Фильм с ID: {} не найден", filmId);
+            return Optional.empty();
+        }
     }
 
     @Override
     public List<Film> findTopPopularFilms(int count) {
         return List.of();
+    }
+
+    private Film mapRowToFilm(ResultSet rs, int rowNum) throws SQLException {
+        return Film.builder()
+                .filmId(rs.getLong("film_id"))
+                .name(rs.getString("name"))
+                .description(rs.getObject("description", String.class))
+                .releaseDate(rs.getObject("release_date", LocalDate.class))
+                .duration(rs.getObject("duration", Integer.class))
+                .mpaId(rs.getObject("rating_id", Integer.class))
+                .build();
     }
 }

@@ -36,8 +36,8 @@ public class FilmController {
     }
 
     @GetMapping
-    public List<Film> getAllFilms() {
-        log.info("Получен запрос на список всех фильмов.");
+    public List<FilmResponse> getAllFilms() {
+        log.info("Получен запрос на получение списка всех фильмов.");
         return filmService.findAllFilms();
     }
 

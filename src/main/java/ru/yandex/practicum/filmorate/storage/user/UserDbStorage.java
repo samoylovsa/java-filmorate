@@ -103,9 +103,6 @@ public class UserDbStorage implements UserStorage {
         } catch (EmptyResultDataAccessException e) {
             log.debug("Пользователь с ID {} не найден", userId);
             return Optional.empty();
-        } catch (DataAccessException e) {
-            log.error("Ошибка при поиске пользователя с ID {}", userId, e);
-            return Optional.empty();
         }
     }
 
