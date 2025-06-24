@@ -30,7 +30,7 @@ public final class FilmMapper {
                 .description(film.getDescription())
                 .releaseDate(film.getReleaseDate())
                 .duration(film.getDuration())
-                .mpa(film.getMpaId() != null ? new MpaRating(film.getMpaId()) : null)
+                .mpa(film.getMpaId() != null ? new MpaRating(film.getMpaId(), film.getName()) : null)
                 .genres(genres != null && !genres.isEmpty() ? genres : null)
                 .build();
     }
