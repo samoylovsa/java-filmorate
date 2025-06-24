@@ -1,4 +1,4 @@
-package ru.yandex.practicum.filmorate.model.common;
+package ru.yandex.practicum.filmorate.dto.response;
 
 import lombok.Getter;
 
