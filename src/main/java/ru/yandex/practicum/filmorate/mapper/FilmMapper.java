@@ -2,10 +2,10 @@ package ru.yandex.practicum.filmorate.mapper;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import ru.yandex.practicum.filmorate.dto.FilmRequest;
-import ru.yandex.practicum.filmorate.dto.FilmResponse;
-import ru.yandex.practicum.filmorate.dto.MpaRating;
-import ru.yandex.practicum.filmorate.model.film.Film;
+import ru.yandex.practicum.filmorate.dto.request.FilmRequest;
+import ru.yandex.practicum.filmorate.dto.response.FilmResponse;
+import ru.yandex.practicum.filmorate.model.MpaRating;
+import ru.yandex.practicum.filmorate.model.Film;
 
 import java.util.Set;
 
