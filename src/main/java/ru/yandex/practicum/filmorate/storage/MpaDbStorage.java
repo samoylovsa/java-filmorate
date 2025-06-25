@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.MpaRating;
 
@@ -15,31 +16,27 @@ import java.util.stream.Collectors;
 @Slf4j
 @Repository
 @RequiredArgsConstructor
-public class MpaDbStorage {
-    private final JdbcTemplate jdbcTemplate;
+public class MpaDbStorage implements MpaStorage {
 
+    private final JdbcTemplate jdbcTemplate;
+    private final RowMapper<MpaRating> mpaMapper;
+
+    @Override
     public List<MpaRating> findAllMpaRatings() {
         String sql = "SELECT rating_id, name FROM ratings";
 
-        List<MpaRating> ratings = jdbcTemplate.query(sql, (rs, rowNum) ->
-                new MpaRating(
-                        rs.getInt("rating_id"),
-                        rs.getString("name")
-                ));
+        List<MpaRating> ratings = jdbcTemplate.query(sql, mpaMapper);
 
         return ratings.stream()
                 .sorted(Comparator.comparingInt(MpaRating::getId))
                 .collect(Collectors.toList());
     }
 
+    @Override
     public Optional<MpaRating> findMpaRatingById(int id) {
         String sql = "SELECT rating_id, name FROM ratings WHERE rating_id = ?";
         try {
-            return Optional.ofNullable(jdbcTemplate.queryForObject(sql, (rs, rowNum) ->
-                    new MpaRating(
-                            rs.getInt("rating_id"),
-                            rs.getString("name")
-                    ), id));
+            return Optional.ofNullable(jdbcTemplate.queryForObject(sql, mpaMapper, id));
         } catch (EmptyResultDataAccessException e) {
             return Optional.empty();
         }

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.Genre;
 
@@ -15,24 +16,18 @@ import java.util.Optional;
 @Slf4j
 @Repository
 @RequiredArgsConstructor
-public class GenreDbStorage {
+public class GenreDbStorage implements GenreStorage {
 
     private final JdbcTemplate jdbcTemplate;
+    private final RowMapper<Genre> genreMapper;
 
+    @Override
     public List<Genre> findAllGenres() {
         String sql = "SELECT genre_id, name FROM genres";
-
         log.info("Запрос всех жанров из базы данных");
         try {
-            List<Genre> genres = jdbcTemplate.query(sql, (rs, rowNum) -> {
-                Genre genre = new Genre();
-                genre.setId(rs.getInt("genre_id"));
-                genre.setName(rs.getString("name"));
-                return genre;
-            });
-
+            List<Genre> genres = jdbcTemplate.query(sql, genreMapper);
             genres.sort(Comparator.comparingInt(Genre::getId));
-
             log.info("Успешно получено {} жанров из базы данных: {}", genres.size(), genres);
             return genres;
         } catch (DataAccessException e) {
@@ -42,18 +37,12 @@ public class GenreDbStorage {
         }
     }
 
+    @Override
     public Optional<Genre> findGenreById(int id) {
         String sql = "SELECT genre_id, name FROM genres WHERE genre_id = ?";
-
         log.info("Поиск жанра по ID: {}", id);
         try {
-            Genre genre = jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
-                Genre g = new Genre();
-                g.setId(rs.getInt("genre_id"));
-                g.setName(rs.getString("name"));
-                return g;
-            }, id);
-
+            Genre genre = jdbcTemplate.queryForObject(sql, genreMapper, id);
             log.info("Найден жанр с ID: {}, Название: {}", genre.getId(), genre.getName());
             return Optional.ofNullable(genre);
         } catch (EmptyResultDataAccessException e) {
