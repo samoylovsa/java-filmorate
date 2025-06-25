@@ -26,7 +26,7 @@ public class MpaDbStorage {
     }
 
     public Optional<MpaRating> findMpaRatingById(int id) {
-        String sql = "SELECT rating_id, name FROM mpa_ratings WHERE rating_id = ?";
+        String sql = "SELECT rating_id, name FROM ratings WHERE rating_id = ?";
         try {
             return Optional.ofNullable(jdbcTemplate.queryForObject(sql, (rs, rowNum) ->
                     new MpaRating(

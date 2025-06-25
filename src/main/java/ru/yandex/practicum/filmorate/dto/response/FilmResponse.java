@@ -2,10 +2,11 @@ package ru.yandex.practicum.filmorate.dto.response;
 
 import lombok.Builder;
 import lombok.Data;
+import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
 
 import java.time.LocalDate;
-import java.util.Set;
+import java.util.List;
 
 @Data
 @Builder
@@ -16,5 +17,5 @@ public class FilmResponse {
     private LocalDate releaseDate;
     private Integer duration;
     private MpaRating mpa;
-    private Set<Integer> genres;
+    private List<Genre> genres;
 }

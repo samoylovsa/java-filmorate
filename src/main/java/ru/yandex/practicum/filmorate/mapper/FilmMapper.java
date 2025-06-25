@@ -4,9 +4,12 @@ import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import ru.yandex.practicum.filmorate.dto.request.FilmRequest;
 import ru.yandex.practicum.filmorate.dto.response.FilmResponse;
+import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.MpaRating;
 import ru.yandex.practicum.filmorate.model.Film;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
@@ -23,15 +26,26 @@ public final class FilmMapper {
                 .build();
     }
 
-    public static FilmResponse mapToFilmResponse(Film film, Set<Integer> genres) {
+    public static FilmResponse mapToFilmResponse(Film film, Set<Integer> genreIds) {
+        List<Genre> genres = null;
+
+        if (genreIds != null && !genreIds.isEmpty()) {
+            genres = new ArrayList<>(genreIds.size());
+            for (Integer genreId : genreIds) {
+                genres.add(Genre.builder().id(genreId).build());
+            }
+        }
+
         return FilmResponse.builder()
                 .id(film.getFilmId())
                 .name(film.getName())
                 .description(film.getDescription())
                 .releaseDate(film.getReleaseDate())
                 .duration(film.getDuration())
-                .mpa(film.getMpaId() != null ? new MpaRating(film.getMpaId(), film.getName()) : null)
-                .genres(genres != null && !genres.isEmpty() ? genres : null)
+                .mpa(film.getMpaId() != null
+                        ? new MpaRating(film.getMpaId(), film.getName())
+                        : null)
+                .genres(genres)
                 .build();
     }
 }

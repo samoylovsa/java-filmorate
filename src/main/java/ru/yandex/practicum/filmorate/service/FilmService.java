@@ -1,8 +1,7 @@
 package ru.yandex.practicum.filmorate.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.dto.request.FilmRequest;
 import ru.yandex.practicum.filmorate.dto.response.FilmResponse;
@@ -10,8 +9,10 @@ import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.mapper.FilmMapper;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
+import ru.yandex.practicum.filmorate.storage.MpaDbStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
@@ -19,39 +20,53 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class FilmService {
 
-    private FilmStorage filmStorage;
-    private UserStorage userStorage;
+    private final FilmStorage filmStorage;
+    private final UserStorage userStorage;
+    private final MpaDbStorage mpaDbStorage;
+    private final GenreService genreService;
 
     private static final LocalDate CINEMA_BIRTHDAY = LocalDate.of(1895, 12, 28);
-
-    @Autowired
-    public FilmService(@Qualifier("filmDbStorage") FilmStorage filmStorage,
-                       @Qualifier("userDbStorage") UserStorage userStorage
-    ) {
-        this.filmStorage = filmStorage;
-        this.userStorage = userStorage;
-    }
 
     public FilmResponse addFilm(FilmRequest filmRequest) {
         validateFilm(filmRequest);
 
+        if (filmRequest.getMpa() != null) {
+            mpaDbStorage.findMpaRatingById(filmRequest.getMpa().getId())
+                    .orElseThrow(() -> new NotFoundException(
+                            "MPA рейтинг с ID: " + filmRequest.getMpa().getId() + " не найден"
+                    ));
+        }
+
+        if (filmRequest.getGenres() != null) {
+            for (Genre genre : filmRequest.getGenres()) {
+                genreService.getGenreById(genre.getId());
+            }
+        }
+
+
         Film film = FilmMapper.mapToFilm(filmRequest);
         film = filmStorage.addFilm(film);
 
-        boolean isGenresExist = filmRequest.getGenreIds() != null && !filmRequest.getGenreIds().isEmpty();
-        if (isGenresExist) {
-            filmStorage.updateFilmGenres(film.getFilmId(), filmRequest.getGenreIds());
+        if (filmRequest.getGenres() != null && !filmRequest.getGenres().isEmpty()) {
+            Set<Integer> genreIds = filmRequest.getGenres().stream()
+                    .map(Genre::getId)
+                    .collect(Collectors.toSet());
+            filmStorage.updateFilmGenres(film.getFilmId(), genreIds);
         }
-        Set<Integer> genreIds = isGenresExist
-                ? filmStorage.getFilmGenres(film.getFilmId())
-                : Collections.emptySet();
 
-        return FilmMapper.mapToFilmResponse(film, genreIds);
+        Set<Integer> responseGenres = filmStorage.getFilmGenres(film.getFilmId());
+
+        return FilmMapper.mapToFilmResponse(
+                film,
+                responseGenres != null ? responseGenres : Collections.emptySet()
+        );
     }
 
     public FilmResponse updateFilm(FilmRequest filmRequest) {
@@ -61,17 +76,24 @@ public class FilmService {
         Film film = FilmMapper.mapToFilm(filmRequest);
         film = filmStorage.updateFilm(film);
 
-        Set<Integer> genreIds = filmRequest.getGenreIds();
-        if (genreIds != null) {
+        Set<Integer> genreIds = null;
+        if (filmRequest.getGenres() != null) {
+            genreIds = filmRequest.getGenres().stream()
+                    .map(Genre::getId)
+                    .collect(Collectors.toSet());
+
             if (genreIds.isEmpty()) {
                 filmStorage.deleteAllFilmGenres(film.getFilmId());
             } else {
                 filmStorage.updateFilmGenres(film.getFilmId(), genreIds);
             }
         }
-        Set<Integer> genresIds = filmStorage.getFilmGenres(film.getFilmId());
 
-        return FilmMapper.mapToFilmResponse(film, genresIds);
+        Set<Integer> currentGenreIds = filmStorage.getFilmGenres(film.getFilmId());
+        return FilmMapper.mapToFilmResponse(
+                film,
+                currentGenreIds != null ? currentGenreIds : Collections.emptySet()
+        );
     }
 
     public List<FilmResponse> findAllFilms() {
