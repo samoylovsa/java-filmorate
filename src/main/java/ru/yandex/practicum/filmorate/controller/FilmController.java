@@ -40,6 +40,11 @@ public class FilmController {
         return filmService.findAllFilms();
     }
 
+    @GetMapping("/{id}")
+    public FilmResponse getFilmById(@PathVariable Long id) {
+        return filmService.getFilmById(id);
+    }
+
     @PutMapping("/{id}/like/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void addLike(

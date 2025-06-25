@@ -1,26 +1,23 @@
 package ru.yandex.practicum.filmorate.storage;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.Genre;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
 @Slf4j
 @Repository
+@RequiredArgsConstructor
 public class GenreDbStorage {
 
     private final JdbcTemplate jdbcTemplate;
-
-    @Autowired
-    public GenreDbStorage(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-    }
 
     public List<Genre> findAllGenres() {
         String sql = "SELECT genre_id, name FROM genres";
@@ -33,6 +30,8 @@ public class GenreDbStorage {
                 genre.setName(rs.getString("name"));
                 return genre;
             });
+
+            genres.sort(Comparator.comparingInt(Genre::getId));
 
             log.info("Успешно получено {} жанров из базы данных: {}", genres.size(), genres);
             return genres;
