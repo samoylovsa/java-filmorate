@@ -1,27 +1,35 @@
 package ru.yandex.practicum.filmorate.storage;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Repository
-@RequiredArgsConstructor
 public class FilmDbStorage implements FilmStorage {
 
     private final JdbcTemplate jdbcTemplate;
     private final SimpleJdbcInsert simpleJdbcInsert;
+    private final RowMapper<Film> filmMapper;
+
+    @Autowired
+    public FilmDbStorage(JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedJdbcTemplate, RowMapper<Film> filmMapper) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.simpleJdbcInsert = new SimpleJdbcInsert(jdbcTemplate)
+                .withTableName("films")
+                .usingGeneratedKeyColumns("film_id");
+        this.filmMapper = filmMapper;
+    }
 
     @Override
     public Film addFilm(Film film) {
@@ -110,7 +118,7 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public List<Film> findAllFilms() {
         String sql = "SELECT film_id, name, description, release_date, duration, rating_id FROM films";
-        List<Film> films = jdbcTemplate.query(sql, this::mapRowToFilm);
+        List<Film> films = jdbcTemplate.query(sql, filmMapper);
         log.debug("Найдены фильмы: {}", films);
         return films;
     }
@@ -123,7 +131,7 @@ public class FilmDbStorage implements FilmStorage {
         try {
             Film film = jdbcTemplate.queryForObject(
                     sql,
-                    this::mapRowToFilm,
+                    filmMapper,
                     filmId
             );
             log.debug("Найден фильм с ID: {}", filmId);
@@ -189,16 +197,5 @@ public class FilmDbStorage implements FilmStorage {
         }
 
         return affectedRows > 0;
-    }
-
-    private Film mapRowToFilm(ResultSet rs, int rowNum) throws SQLException {
-        return Film.builder()
-                .filmId(rs.getLong("film_id"))
-                .name(rs.getString("name"))
-                .description(rs.getObject("description", String.class))
-                .releaseDate(rs.getObject("release_date", LocalDate.class))
-                .duration(rs.getObject("duration", Integer.class))
-                .mpaId(rs.getObject("rating_id", Integer.class))
-                .build();
     }
 }

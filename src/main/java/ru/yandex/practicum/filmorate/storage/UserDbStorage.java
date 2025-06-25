@@ -5,15 +5,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.storage.mapper.UserRowMapper;
 
 import java.sql.Date;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,14 +24,16 @@ public class UserDbStorage implements UserStorage {
     private final JdbcTemplate jdbcTemplate;
     private final SimpleJdbcInsert simpleJdbcInsert;
     private final NamedParameterJdbcTemplate namedJdbcTemplate;
+    private final RowMapper<User> userMapper;
 
     @Autowired
-    public UserDbStorage(JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedJdbcTemplate) {
+    public UserDbStorage(JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedJdbcTemplate, RowMapper<User> userMapper) {
         this.jdbcTemplate = jdbcTemplate;
         this.simpleJdbcInsert = new SimpleJdbcInsert(jdbcTemplate)
                 .withTableName("users")
                 .usingGeneratedKeyColumns("user_id");
         this.namedJdbcTemplate = namedJdbcTemplate;
+        this.userMapper = userMapper;
     }
 
     @Override
@@ -47,18 +49,12 @@ public class UserDbStorage implements UserStorage {
         long id = simpleJdbcInsert.executeAndReturnKey(parameters).longValue();
         log.info("Создан новый пользователь с ID: {}", id);
 
-        return User.builder()
-                .userId(id)
-                .email(user.getEmail())
-                .login(user.getLogin())
-                .name(user.getName())
-                .birthday(user.getBirthday())
-                .build();
+        String sql = "SELECT * FROM users WHERE user_id = ?";
+        return jdbcTemplate.queryForObject(sql, userMapper, id);
     }
 
     @Override
     public User updateUser(User user) {
-        //todo Вынести в сервисный слой
         String checkSql = "SELECT COUNT(*) FROM users WHERE user_id = ?";
         boolean exists = jdbcTemplate.queryForObject(checkSql, Long.class, user.getUserId()) > 0;
         if (!exists) {
@@ -78,14 +74,15 @@ public class UserDbStorage implements UserStorage {
 
         updateFriendsInDatabase(user);
 
-        return user;
+        String sql = "SELECT * FROM users WHERE user_id = ?";
+        return jdbcTemplate.queryForObject(sql, userMapper, user.getUserId());
     }
 
     @Override
     public List<User> findAllUsers() {
         String sqlQuery = "SELECT * FROM users";
         try {
-            return jdbcTemplate.query(sqlQuery, this::mapRowToUser);
+            return jdbcTemplate.query(sqlQuery, userMapper);
         } catch (DataAccessException e) {
             log.error("Ошибка при получении списка пользователей", e);
             return Collections.emptyList();
@@ -96,7 +93,7 @@ public class UserDbStorage implements UserStorage {
     public Optional<User> findUserById(Long userId) {
         String sqlQuery = "SELECT * FROM users WHERE user_id = ?";
         try {
-            User user = jdbcTemplate.queryForObject(sqlQuery, this::mapRowToUser, userId);
+            User user = jdbcTemplate.queryForObject(sqlQuery, userMapper, userId);
             return Optional.ofNullable(user);
         } catch (EmptyResultDataAccessException e) {
             log.debug("Пользователь с ID {} не найден", userId);
@@ -109,7 +106,7 @@ public class UserDbStorage implements UserStorage {
 
         String sql = "SELECT * FROM users WHERE user_id IN (:ids)";
         Map<String, Object> params = Map.of("ids", ids);
-        return namedJdbcTemplate.query(sql, params, this::mapRowToUser);
+        return namedJdbcTemplate.query(sql, params, userMapper);
     }
 
     @Override
@@ -139,27 +136,6 @@ public class UserDbStorage implements UserStorage {
             user.setName(user.getLogin());
             log.debug("Для пользователя {} установлено имя из логина", user.getLogin());
         }
-    }
-
-    private User mapRowToUser(ResultSet rs, int rowNum) throws SQLException {
-        Long userId = rs.getLong("user_id");
-
-        Set<Long> friends = new HashSet<>(
-                jdbcTemplate.queryForList(
-                        "SELECT friend_id FROM friendships WHERE user_id = ?",
-                        Long.class,
-                        userId
-                )
-        );
-
-        return User.builder()
-                .userId(userId)
-                .email(rs.getString("email"))
-                .login(rs.getString("login"))
-                .name(rs.getString("name"))
-                .birthday(rs.getDate("birthday").toLocalDate())
-                .friends(friends)
-                .build();
     }
 
     private void updateFriendsInDatabase(User user) {
