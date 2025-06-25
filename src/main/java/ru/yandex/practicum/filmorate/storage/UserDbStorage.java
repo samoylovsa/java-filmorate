@@ -11,7 +11,6 @@ import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
-import ru.yandex.practicum.filmorate.storage.mapper.UserRowMapper;
 
 import java.sql.Date;
 import java.util.*;
@@ -27,7 +26,11 @@ public class UserDbStorage implements UserStorage {
     private final RowMapper<User> userMapper;
 
     @Autowired
-    public UserDbStorage(JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedJdbcTemplate, RowMapper<User> userMapper) {
+    public UserDbStorage(
+            JdbcTemplate jdbcTemplate,
+            NamedParameterJdbcTemplate namedJdbcTemplate,
+            RowMapper<User> userMapper
+    ) {
         this.jdbcTemplate = jdbcTemplate;
         this.simpleJdbcInsert = new SimpleJdbcInsert(jdbcTemplate)
                 .withTableName("users")
