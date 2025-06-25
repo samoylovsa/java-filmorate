@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.Film;
@@ -51,8 +50,8 @@ public class FilmDbStorage implements FilmStorage {
         jdbcTemplate.update("DELETE FROM film_genre WHERE film_id = ?", filmId);
 
         String sql = """
-                MERGE INTO film_genre (film_id, genre_id) 
-                KEY (film_id, genre_id) 
+                MERGE INTO film_genre (film_id, genre_id)
+                KEY (film_id, genre_id)
                 VALUES (?, ?)
                 """;
 
@@ -74,7 +73,7 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public List<Genre> getFilmGenres(Long filmId) {
         String sql = """
-                SELECT g.genre_id, g.name 
+                SELECT g.genre_id, g.name
                 FROM film_genre fg
                 JOIN genres g ON fg.genre_id = g.genre_id
                 WHERE fg.film_id = ?
