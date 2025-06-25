@@ -5,14 +5,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.dto.request.FilmRequest;
 import ru.yandex.practicum.filmorate.dto.response.FilmResponse;
+import ru.yandex.practicum.filmorate.dto.response.GenreResponse;
+import ru.yandex.practicum.filmorate.dto.response.MpaResponse;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.mapper.FilmMapper;
+import ru.yandex.practicum.filmorate.mapper.GenreMapper;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.MpaDbStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
@@ -29,7 +31,7 @@ public class FilmService {
 
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
-    private final MpaDbStorage mpaDbStorage;
+    private final MpaService mpaService;
     private final GenreService genreService;
 
     private static final LocalDate CINEMA_BIRTHDAY = LocalDate.of(1895, 12, 28);
@@ -38,10 +40,7 @@ public class FilmService {
         validateFilm(filmRequest);
 
         if (filmRequest.getMpa() != null) {
-            mpaDbStorage.findMpaRatingById(filmRequest.getMpa().getId())
-                    .orElseThrow(() -> new NotFoundException(
-                            "MPA рейтинг с ID: " + filmRequest.getMpa().getId() + " не найден"
-                    ));
+            mpaService.getMpaRatingById(filmRequest.getMpa().getId());
         }
 
         if (filmRequest.getGenres() != null) {
@@ -49,7 +48,6 @@ public class FilmService {
                 genreService.getGenreById(genre.getId());
             }
         }
-
 
         Film film = FilmMapper.mapToFilm(filmRequest);
         film = filmStorage.addFilm(film);
@@ -61,11 +59,19 @@ public class FilmService {
             filmStorage.updateFilmGenres(film.getFilmId(), genreIds);
         }
 
-        Set<Integer> responseGenres = filmStorage.getFilmGenres(film.getFilmId());
+        List<Genre> genres = filmStorage.getFilmGenres(film.getFilmId());
+        List<GenreResponse> genreResponses = genres.stream()
+                .map(GenreMapper::mapToGenreResponse)
+                .toList();
+
+        MpaResponse mpaRatingResponse = film.getMpaId() != null
+                ? mpaService.getMpaRatingById(film.getMpaId())
+                : null;
 
         return FilmMapper.mapToFilmResponse(
                 film,
-                responseGenres != null ? responseGenres : Collections.emptySet()
+                genreResponses,
+                mpaRatingResponse
         );
     }
 
@@ -89,10 +95,19 @@ public class FilmService {
             }
         }
 
-        Set<Integer> currentGenreIds = filmStorage.getFilmGenres(film.getFilmId());
+        List<Genre> genres = filmStorage.getFilmGenres(film.getFilmId());
+        List<GenreResponse> genreResponses = genres.stream()
+                .map(GenreMapper::mapToGenreResponse)
+                .toList();
+
+        MpaResponse mpaRatingResponse = film.getMpaId() != null
+                ? mpaService.getMpaRatingById(film.getMpaId())
+                : null;
+
         return FilmMapper.mapToFilmResponse(
                 film,
-                currentGenreIds != null ? currentGenreIds : Collections.emptySet()
+                genreResponses,
+                mpaRatingResponse
         );
     }
 
@@ -101,12 +116,38 @@ public class FilmService {
         List<FilmResponse> listOfFilmResponse = new ArrayList<>(films.size());
 
         for (Film film : films) {
-            Set<Integer> genres = filmStorage.getFilmGenres(film.getFilmId());
-            FilmResponse filmResponse = FilmMapper.mapToFilmResponse(film, genres);
+            List<Genre> genres = filmStorage.getFilmGenres(film.getFilmId());
+            List<GenreResponse> genreResponses = genres.stream()
+                    .map(GenreMapper::mapToGenreResponse)
+                    .toList();
+
+            MpaResponse mpaRatingResponse = film.getMpaId() != null
+                    ? mpaService.getMpaRatingById(film.getMpaId())
+                    : null;
+            FilmResponse filmResponse = FilmMapper.mapToFilmResponse(film, genreResponses, mpaRatingResponse);
             listOfFilmResponse.add(filmResponse);
         }
 
         return listOfFilmResponse;
+    }
+
+    public FilmResponse getFilmById(Long filmId) {
+        Film film = findFilmById(filmId);
+
+        List<Genre> genres = filmStorage.getFilmGenres(filmId);
+        List<GenreResponse> genreResponses = genres.stream()
+                .map(GenreMapper::mapToGenreResponse)
+                .toList();
+
+        MpaResponse mpaRatingResponse = film.getMpaId() != null
+                ? mpaService.getMpaRatingById(film.getMpaId())
+                : null;
+
+        return FilmMapper.mapToFilmResponse(
+                film,
+                genreResponses,
+                mpaRatingResponse
+        );
     }
 
     public void addLike(Long filmId, Long userId) {
@@ -140,9 +181,16 @@ public class FilmService {
         }
 
         List<FilmResponse> listOfFilmResponse = new ArrayList<>(popularFilms.size());
-        for (Film popularFilm : popularFilms) {
-            Set<Integer> genres = filmStorage.getFilmGenres(popularFilm.getFilmId());
-            FilmResponse filmResponse = FilmMapper.mapToFilmResponse(popularFilm, genres);
+        for (Film film : popularFilms) {
+            List<Genre> genres = filmStorage.getFilmGenres(film.getFilmId());
+            List<GenreResponse> genreResponses = genres.stream()
+                    .map(GenreMapper::mapToGenreResponse)
+                    .toList();
+
+            MpaResponse mpaRatingResponse = film.getMpaId() != null
+                    ? mpaService.getMpaRatingById(film.getMpaId())
+                    : null;
+            FilmResponse filmResponse = FilmMapper.mapToFilmResponse(film, genreResponses, mpaRatingResponse);
             listOfFilmResponse.add(filmResponse);
         }
 

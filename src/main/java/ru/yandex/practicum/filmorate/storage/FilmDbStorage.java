@@ -1,13 +1,14 @@
 package ru.yandex.practicum.filmorate.storage;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.Film;
+import ru.yandex.practicum.filmorate.model.Genre;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -17,20 +18,11 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Repository
+@RequiredArgsConstructor
 public class FilmDbStorage implements FilmStorage {
 
     private final JdbcTemplate jdbcTemplate;
     private final SimpleJdbcInsert simpleJdbcInsert;
-    private final NamedParameterJdbcTemplate namedJdbcTemplate;
-
-    @Autowired
-    public FilmDbStorage(JdbcTemplate jdbcTemplate, NamedParameterJdbcTemplate namedJdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.simpleJdbcInsert = new SimpleJdbcInsert(jdbcTemplate)
-                .withTableName("films")
-                .usingGeneratedKeyColumns("film_id");
-        this.namedJdbcTemplate = namedJdbcTemplate;
-    }
 
     @Override
     public Film addFilm(Film film) {
@@ -80,12 +72,21 @@ public class FilmDbStorage implements FilmStorage {
     }
 
     @Override
-    public Set<Integer> getFilmGenres(Long filmId) {
-        String sql = "SELECT genre_id FROM film_genre WHERE film_id = ?";
+    public List<Genre> getFilmGenres(Long filmId) {
+        String sql = """
+                SELECT g.genre_id, g.name 
+                FROM film_genre fg
+                JOIN genres g ON fg.genre_id = g.genre_id
+                WHERE fg.film_id = ?
+                ORDER BY g.genre_id
+                """;
 
-        return new HashSet<>(jdbcTemplate.query(
+        return new ArrayList<>(jdbcTemplate.query(
                 sql,
-                (rs, rowNum) -> rs.getInt("genre_id"),
+                (rs, rowNum) -> Genre.builder()
+                        .id(rs.getInt("genre_id"))
+                        .name(rs.getString("name"))
+                        .build(),
                 filmId
         ));
     }

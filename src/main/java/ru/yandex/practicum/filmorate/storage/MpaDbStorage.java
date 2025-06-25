@@ -7,8 +7,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.MpaRating;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Repository
@@ -17,12 +19,17 @@ public class MpaDbStorage {
     private final JdbcTemplate jdbcTemplate;
 
     public List<MpaRating> findAllMpaRatings() {
-        String sql = "SELECT rating_id, name FROM mpa_ratings";
-        return jdbcTemplate.query(sql, (rs, rowNum) ->
+        String sql = "SELECT rating_id, name FROM ratings";
+
+        List<MpaRating> ratings = jdbcTemplate.query(sql, (rs, rowNum) ->
                 new MpaRating(
                         rs.getInt("rating_id"),
                         rs.getString("name")
                 ));
+
+        return ratings.stream()
+                .sorted(Comparator.comparingInt(MpaRating::getId))
+                .collect(Collectors.toList());
     }
 
     public Optional<MpaRating> findMpaRatingById(int id) {
