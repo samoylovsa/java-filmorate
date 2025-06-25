@@ -163,8 +163,9 @@ public class FilmDbStorage implements FilmStorage {
 
     @Override
     public boolean addLike(Long filmId, Long userId) {
-        String sql = "INSERT INTO likes (film_id, user_id) VALUES (?, ?) " +
-                "ON CONFLICT (film_id, user_id) DO NOTHING";
+        String sql = "MERGE INTO likes (film_id, user_id) \n" +
+                "KEY (film_id, user_id) \n" +
+                "VALUES (?, ?)";
         int affectedRows = jdbcTemplate.update(sql, filmId, userId);
 
         if (affectedRows > 0) {
