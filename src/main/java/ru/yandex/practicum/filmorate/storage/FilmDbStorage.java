@@ -8,7 +8,6 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.model.Genre;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -59,8 +58,11 @@ public class FilmDbStorage implements FilmStorage {
     public void updateFilmGenres(Long filmId, Set<Integer> genreIds) {
         jdbcTemplate.update("DELETE FROM film_genre WHERE film_id = ?", filmId);
 
-        String sql = "INSERT INTO film_genre (film_id, genre_id) VALUES (?, ?) "
-                + "ON CONFLICT (film_id, genre_id) DO NOTHING";
+        String sql = """
+                MERGE INTO film_genre (film_id, genre_id) 
+                KEY (film_id, genre_id) 
+                VALUES (?, ?)
+                """;
 
         List<Object[]> batchArgs = genreIds.stream()
                 .map(genreId -> new Object[]{filmId, genreId})
@@ -135,15 +137,15 @@ public class FilmDbStorage implements FilmStorage {
     @Override
     public List<Long> findTopPopularFilmIds(int count) {
         String sql = """
-                SELECT film_id
-                FROM likes
-                GROUP BY film_id
-                ORDER BY COUNT(user_id) DESC, film_id DESC
+                SELECT f.film_id
+                FROM films f
+                LEFT JOIN likes l ON f.film_id = l.film_id
+                GROUP BY f.film_id
+                ORDER BY COUNT(l.user_id) DESC, f.film_id DESC
                 LIMIT ?
                 """;
 
         List<Long> topPopularFilmIds = jdbcTemplate.queryForList(sql, Long.class, count);
-
         log.debug("Найден следующий список популярных фильмов: {}", topPopularFilmIds);
         return topPopularFilmIds;
     }
