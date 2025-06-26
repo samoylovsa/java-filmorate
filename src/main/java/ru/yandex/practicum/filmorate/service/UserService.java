@@ -3,13 +3,16 @@ package ru.yandex.practicum.filmorate.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.yandex.practicum.filmorate.dto.request.UserRequest;
+import ru.yandex.practicum.filmorate.dto.response.UserResponse;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
+import ru.yandex.practicum.filmorate.mapper.UserMapper;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -18,119 +21,59 @@ public class UserService {
 
     private final UserStorage userStorage;
 
-    public User addUser(User user) {
-        validateUser(user);
+    public UserResponse addUser(UserRequest userRequest) {
+        validateUser(userRequest);
+        setNameFromLoginIfEmpty(userRequest);
+        User user = UserMapper.mapToUser(userRequest);
+        user = userStorage.addUser(user);
 
-        return userStorage.addUser(user);
+        return UserMapper.mapToUserResponse(user);
     }
 
-    public User updateUser(User user) {
-        validateUser(user);
+    public UserResponse updateUser(UserRequest userRequest) {
+        validateUser(userRequest);
+        setNameFromLoginIfEmpty(userRequest);
+        validateUserExist(userRequest.getId());
+        User user = UserMapper.mapToUser(userRequest);
+        user = userStorage.updateUser(user);
 
-        return userStorage.updateUser(user);
+        return UserMapper.mapToUserResponse(user);
     }
 
-    public List<User> findAllUsers() {
-        return userStorage.findAllUsers();
+    public List<UserResponse> findAllUsers() {
+        List<User> users = userStorage.findAllUsers();
+
+        return UserMapper.mapToListOfUserResponses(users);
     }
 
-    public void addFriend(Long userId, Long friendId) {
-        validateNotSameUser(userId, friendId);
-
-        User user = findUserById(userId);
-        User friend = findUserById(friendId);
-
-        if (user.getFriends().contains(friendId)) {
-            throw new ValidationException("Пользователи уже являются друзьями");
-        }
-
-        user.getFriends().add(friend.getUserId());
-
-        userStorage.updateUser(user);
-    }
-
-    public void deleteFriend(Long userId, Long friendId) {
-        validateNotSameUser(userId, friendId);
-
-        User user = findUserById(userId);
-        findUserById(friendId);
-
-        if (!userStorage.friendshipExists(userId, friendId)) {
-            // Для теста "Not friend remove" - просто возвращаемся без ошибки
-            return;
-        }
-
-        Set<Long> updatedFriends = user.getFriends() != null ?
-                new HashSet<>(user.getFriends()) : new HashSet<>();
-
-        updatedFriends.remove(friendId);
-
-        if (user.getFriends() == null || !user.getFriends().equals(updatedFriends)) {
-            User updatedUser = User.builder()
-                    .userId(user.getUserId())
-                    .email(user.getEmail())
-                    .login(user.getLogin())
-                    .name(user.getName())
-                    .birthday(user.getBirthday())
-                    .friends(updatedFriends)
-                    .build();
-
-            userStorage.updateUser(updatedUser);
-        }
-    }
-
-    public List<User> getFriends(Long userId) {
-        User user = findUserById(userId);
-        Set<Long> friends = user.getFriends();
-
-        if (friends == null || friends.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        return userStorage.findUsersByIds(friends);
-    }
-
-    public List<User> getCommonFriends(Long userId, Long otherUserId) {
-        validateNotSameUser(userId, otherUserId);
-
-        Map<Long, Set<Long>> friendsMap = userStorage.getFriendships(Set.of(userId, otherUserId));
-
-        Set<Long> userFriends = friendsMap.getOrDefault(userId, Collections.emptySet());
-        Set<Long> otherUserFriends = friendsMap.getOrDefault(otherUserId, Collections.emptySet());
-
-        Set<Long> commonIds = new HashSet<>(userFriends);
-        commonIds.retainAll(otherUserFriends);
-
-        return userStorage.findUsersByIds(commonIds);
-    }
-
-    private User findUserById(Long userId) {
-        return userStorage.findUserById(userId)
+    public void validateUserExist(Long userId) {
+        userStorage.findUserById(userId)
                 .orElseThrow(() -> new NotFoundException("Пользователь с ID " + userId + " не найден"));
     }
 
-    private void validateNotSameUser(Long firstUser, Long secondUser) {
-        if (firstUser.equals(secondUser)) {
-            throw new ValidationException("Нельзя выполнить операцию с самим собой");
-        }
-    }
-
-    private void validateUser(User user) {
-        log.debug("Начало валидации пользователя: {}", user);
-        if (user.getEmail() == null || user.getEmail().isBlank() || !user.getEmail().contains("@")) {
-            log.error("Некорректный email пользователя: {}", user.getEmail());
+    private void validateUser(UserRequest userRequest) {
+        log.debug("Начало валидации пользователя: {}", userRequest);
+        if (userRequest.getEmail() == null || userRequest.getEmail().isBlank() || !userRequest.getEmail().contains("@")) {
+            log.error("Некорректный email пользователя: {}", userRequest.getEmail());
             throw new ValidationException("Электронная почта не может быть пустой и должна содержать @");
         }
 
-        if (user.getLogin() == null || user.getLogin().isBlank() || user.getLogin().contains(" ")) {
-            log.error("Некорректный логин пользователя: '{}'", user.getLogin());
+        if (userRequest.getLogin() == null || userRequest.getLogin().isBlank() || userRequest.getLogin().contains(" ")) {
+            log.error("Некорректный логин пользователя: '{}'", userRequest.getLogin());
             throw new ValidationException("Логин не может быть пустым и содержать пробелы");
         }
 
-        if (user.getBirthday() != null && user.getBirthday().isAfter(LocalDate.now())) {
-            log.error("Дата рождения пользователя в будущем: {}", user.getBirthday());
+        if (userRequest.getBirthday() != null && userRequest.getBirthday().isAfter(LocalDate.now())) {
+            log.error("Дата рождения пользователя в будущем: {}", userRequest.getBirthday());
             throw new ValidationException("Дата рождения не может быть в будущем");
         }
         log.debug("Валидация пользователя пройдена успешно");
+    }
+
+    private void setNameFromLoginIfEmpty(UserRequest userRequest) {
+        if (userRequest.getName() == null || userRequest.getName().isBlank()) {
+            userRequest.setName(userRequest.getLogin());
+            log.debug("Для пользователя {} установлено имя из логина", userRequest.getLogin());
+        }
     }
 }
