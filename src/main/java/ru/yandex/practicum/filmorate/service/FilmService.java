@@ -18,7 +18,6 @@ import ru.yandex.practicum.filmorate.storage.FilmStorage;
 import ru.yandex.practicum.filmorate.storage.UserStorage;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -38,116 +37,53 @@ public class FilmService {
 
     public FilmResponse addFilm(FilmRequest filmRequest) {
         validateFilm(filmRequest);
-
-        if (filmRequest.getMpa() != null) {
-            mpaService.getMpaRatingById(filmRequest.getMpa().getId());
-        }
-
-        if (filmRequest.getGenres() != null) {
-            for (Genre genre : filmRequest.getGenres()) {
-                genreService.getGenreById(genre.getId());
-            }
-        }
-
+        validateFilmRelations(filmRequest);
         Film film = FilmMapper.mapToFilm(filmRequest);
         film = filmStorage.addFilm(film);
-
-        if (filmRequest.getGenres() != null && !filmRequest.getGenres().isEmpty()) {
-            Set<Integer> genreIds = filmRequest.getGenres().stream()
-                    .map(Genre::getId)
-                    .collect(Collectors.toSet());
-            filmStorage.updateFilmGenres(film.getFilmId(), genreIds);
-        }
-
-        List<Genre> genres = filmStorage.getFilmGenres(film.getFilmId());
-        List<GenreResponse> genreResponses = genres.stream()
-                .map(GenreMapper::mapToGenreResponse)
-                .toList();
-
-        MpaResponse mpaRatingResponse = film.getMpaId() != null
-                ? mpaService.getMpaRatingById(film.getMpaId())
-                : null;
+        updateFilmGenres(film, filmRequest);
 
         return FilmMapper.mapToFilmResponse(
                 film,
-                genreResponses,
-                mpaRatingResponse
+                getGenreResponses(film.getFilmId()),
+                getMpaResponse(film)
         );
     }
 
     public FilmResponse updateFilm(FilmRequest filmRequest) {
         validateFilm(filmRequest);
-
+        validateFilmRelations(filmRequest);
         findFilmById(filmRequest.getId());
         Film film = FilmMapper.mapToFilm(filmRequest);
         film = filmStorage.updateFilm(film);
-
-        Set<Integer> genreIds = null;
-        if (filmRequest.getGenres() != null) {
-            genreIds = filmRequest.getGenres().stream()
-                    .map(Genre::getId)
-                    .collect(Collectors.toSet());
-
-            if (genreIds.isEmpty()) {
-                filmStorage.deleteAllFilmGenres(film.getFilmId());
-            } else {
-                filmStorage.updateFilmGenres(film.getFilmId(), genreIds);
-            }
-        }
-
-        List<Genre> genres = filmStorage.getFilmGenres(film.getFilmId());
-        List<GenreResponse> genreResponses = genres.stream()
-                .map(GenreMapper::mapToGenreResponse)
-                .toList();
-
-        MpaResponse mpaRatingResponse = film.getMpaId() != null
-                ? mpaService.getMpaRatingById(film.getMpaId())
-                : null;
+        updateFilmGenres(film, filmRequest);
 
         return FilmMapper.mapToFilmResponse(
                 film,
-                genreResponses,
-                mpaRatingResponse
+                getGenreResponses(film.getFilmId()),
+                getMpaResponse(film)
         );
-    }
-
-    public List<FilmResponse> findAllFilms() {
-        List<Film> films = filmStorage.findAllFilms();
-        List<FilmResponse> listOfFilmResponse = new ArrayList<>(films.size());
-
-        for (Film film : films) {
-            List<Genre> genres = filmStorage.getFilmGenres(film.getFilmId());
-            List<GenreResponse> genreResponses = genres.stream()
-                    .map(GenreMapper::mapToGenreResponse)
-                    .toList();
-
-            MpaResponse mpaRatingResponse = film.getMpaId() != null
-                    ? mpaService.getMpaRatingById(film.getMpaId())
-                    : null;
-            FilmResponse filmResponse = FilmMapper.mapToFilmResponse(film, genreResponses, mpaRatingResponse);
-            listOfFilmResponse.add(filmResponse);
-        }
-
-        return listOfFilmResponse;
     }
 
     public FilmResponse getFilmById(Long filmId) {
         Film film = findFilmById(filmId);
+        return getFilmResponse(film);
+    }
 
-        List<Genre> genres = filmStorage.getFilmGenres(filmId);
-        List<GenreResponse> genreResponses = genres.stream()
-                .map(GenreMapper::mapToGenreResponse)
-                .toList();
+    public List<FilmResponse> findAllFilms() {
+        List<Film> films = filmStorage.findAllFilms();
+        return getFilmResponses(films);
+    }
 
-        MpaResponse mpaRatingResponse = film.getMpaId() != null
-                ? mpaService.getMpaRatingById(film.getMpaId())
-                : null;
+    public List<FilmResponse> getTopPopularFilms(int count) {
+        validateCountParameter(count);
 
-        return FilmMapper.mapToFilmResponse(
-                film,
-                genreResponses,
-                mpaRatingResponse
-        );
+        List<Long> topFilmIds = filmStorage.findTopPopularFilmIds(count);
+        if (topFilmIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Film> popularFilms = getFilmsByIds(topFilmIds);
+        return getFilmResponses(popularFilms);
     }
 
     public void addLike(Long filmId, Long userId) {
@@ -164,37 +100,6 @@ public class FilmService {
         validateLiked(filmId, userId);
 
         filmStorage.deleteLike(filmId, userId);
-    }
-
-    public List<FilmResponse> getTopPopularFilms(int count) {
-        validateCountParameter(count);
-
-        List<Long> topFilmIds = filmStorage.findTopPopularFilmIds(count);
-        if (topFilmIds.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<Film> popularFilms = new ArrayList<>(topFilmIds.size());
-        for (Long topFilmId : topFilmIds) {
-            Film film = findFilmById(topFilmId);
-            popularFilms.add(film);
-        }
-
-        List<FilmResponse> listOfFilmResponse = new ArrayList<>(popularFilms.size());
-        for (Film film : popularFilms) {
-            List<Genre> genres = filmStorage.getFilmGenres(film.getFilmId());
-            List<GenreResponse> genreResponses = genres.stream()
-                    .map(GenreMapper::mapToGenreResponse)
-                    .toList();
-
-            MpaResponse mpaRatingResponse = film.getMpaId() != null
-                    ? mpaService.getMpaRatingById(film.getMpaId())
-                    : null;
-            FilmResponse filmResponse = FilmMapper.mapToFilmResponse(film, genreResponses, mpaRatingResponse);
-            listOfFilmResponse.add(filmResponse);
-        }
-
-        return listOfFilmResponse;
     }
 
     private Film findFilmById(Long filmId) {
@@ -245,5 +150,58 @@ public class FilmService {
             throw new ValidationException("Продолжительность фильма должна быть положительным числом");
         }
         log.debug("Валидация фильма пройдена успешно");
+    }
+
+    private void validateFilmRelations(FilmRequest filmRequest) {
+        if (filmRequest.getMpa() != null) {
+            mpaService.getMpaRatingById(filmRequest.getMpa().getId());
+        }
+        if (filmRequest.getGenres() != null) {
+            filmRequest.getGenres().forEach(genre ->
+                    genreService.getGenreById(genre.getId()));
+        }
+    }
+
+    private List<GenreResponse> getGenreResponses(Long filmId) {
+        return filmStorage.getFilmGenres(filmId).stream()
+                .map(GenreMapper::mapToGenreResponse)
+                .toList();
+    }
+
+    private MpaResponse getMpaResponse(Film film) {
+        return film.getMpaId() != null
+                ? mpaService.getMpaRatingById(film.getMpaId())
+                : null;
+    }
+
+    private void updateFilmGenres(Film film, FilmRequest filmRequest) {
+        if (filmRequest.getGenres() != null) {
+            Set<Integer> genreIds = filmRequest.getGenres().stream()
+                    .map(Genre::getId)
+                    .collect(Collectors.toSet());
+            if (genreIds.isEmpty()) {
+                filmStorage.deleteAllFilmGenres(film.getFilmId());
+            } else {
+                filmStorage.updateFilmGenres(film.getFilmId(), genreIds);
+            }
+        }
+    }
+
+    private FilmResponse getFilmResponse(Film film) {
+        List<GenreResponse> genreResponses = getGenreResponses(film.getFilmId());
+        MpaResponse mpaRatingResponse = getMpaResponse(film);
+        return FilmMapper.mapToFilmResponse(film, genreResponses, mpaRatingResponse);
+    }
+
+    private List<FilmResponse> getFilmResponses(List<Film> films) {
+        return films.stream()
+                .map(this::getFilmResponse)
+                .toList();
+    }
+
+    private List<Film> getFilmsByIds(List<Long> filmIds) {
+        return filmIds.stream()
+                .map(this::findFilmById)
+                .toList();
     }
 }
