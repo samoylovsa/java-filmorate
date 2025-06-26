@@ -9,12 +9,10 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Repository;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.sql.Date;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Repository
@@ -22,7 +20,6 @@ public class UserDbStorage implements UserStorage {
 
     private final JdbcTemplate jdbcTemplate;
     private final SimpleJdbcInsert simpleJdbcInsert;
-    private final NamedParameterJdbcTemplate namedJdbcTemplate;
     private final RowMapper<User> userMapper;
 
     @Autowired
@@ -35,14 +32,11 @@ public class UserDbStorage implements UserStorage {
         this.simpleJdbcInsert = new SimpleJdbcInsert(jdbcTemplate)
                 .withTableName("users")
                 .usingGeneratedKeyColumns("user_id");
-        this.namedJdbcTemplate = namedJdbcTemplate;
         this.userMapper = userMapper;
     }
 
     @Override
     public User addUser(User user) {
-        setNameFromLoginIfEmpty(user);
-
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("email", user.getEmail());
         parameters.put("login", user.getLogin());
@@ -50,22 +44,14 @@ public class UserDbStorage implements UserStorage {
         parameters.put("birthday", Date.valueOf(user.getBirthday()));
 
         long id = simpleJdbcInsert.executeAndReturnKey(parameters).longValue();
-        log.info("Создан новый пользователь с ID: {}", id);
+        user.setUserId(id);
+        log.info("Создан новый пользователь с ID: {}", user);
 
-        String sql = "SELECT * FROM users WHERE user_id = ?";
-        return jdbcTemplate.queryForObject(sql, userMapper, id);
+        return user;
     }
 
     @Override
     public User updateUser(User user) {
-        String checkSql = "SELECT COUNT(*) FROM users WHERE user_id = ?";
-        boolean exists = jdbcTemplate.queryForObject(checkSql, Long.class, user.getUserId()) > 0;
-        if (!exists) {
-            throw new NotFoundException("Пользователь с ID=" + user.getUserId() + " не найден");
-        }
-
-        setNameFromLoginIfEmpty(user);
-
         String sqlQuery = "UPDATE users SET email = ?, login = ?, name = ?, birthday = ? WHERE user_id = ?";
         jdbcTemplate.update(sqlQuery,
                 user.getEmail(),
@@ -75,10 +61,7 @@ public class UserDbStorage implements UserStorage {
                 user.getUserId());
         log.info("Пользователь с ID {} успешно обновлен", user.getUserId());
 
-        updateFriendsInDatabase(user);
-
-        String sql = "SELECT * FROM users WHERE user_id = ?";
-        return jdbcTemplate.queryForObject(sql, userMapper, user.getUserId());
+        return user;
     }
 
     @Override
@@ -102,56 +85,5 @@ public class UserDbStorage implements UserStorage {
             log.debug("Пользователь с ID {} не найден", userId);
             return Optional.empty();
         }
-    }
-
-    public List<User> findUsersByIds(Collection<Long> ids) {
-        if (ids.isEmpty()) return Collections.emptyList();
-
-        String sql = "SELECT * FROM users WHERE user_id IN (:ids)";
-        Map<String, Object> params = Map.of("ids", ids);
-        return namedJdbcTemplate.query(sql, params, userMapper);
-    }
-
-    @Override
-    public Map<Long, Set<Long>> getFriendships(Set<Long> userIds) {
-        if (userIds.isEmpty()) return Collections.emptyMap();
-
-        String sql = "SELECT user_id, friend_id FROM friendships WHERE user_id IN (:userIds)";
-        Map<Long, Set<Long>> result = new HashMap<>();
-
-        namedJdbcTemplate.query(sql, Map.of("userIds", userIds), rs -> {
-            Long userId = rs.getLong("user_id");
-            Long friendId = rs.getLong("friend_id");
-            result.computeIfAbsent(userId, k -> new HashSet<>()).add(friendId);
-        });
-
-        return result;
-    }
-
-    @Override
-    public boolean friendshipExists(Long userId, Long friendId) {
-        String sql = "SELECT EXISTS(SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ?)";
-        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(sql, Boolean.class, userId, friendId));
-    }
-
-    private void setNameFromLoginIfEmpty(User user) {
-        if (user.getName() == null || user.getName().isBlank()) {
-            user.setName(user.getLogin());
-            log.debug("Для пользователя {} установлено имя из логина", user.getLogin());
-        }
-    }
-
-    private void updateFriendsInDatabase(User user) {
-        jdbcTemplate.update("DELETE FROM friendships WHERE user_id = ?", user.getUserId());
-
-        if (user.getFriends() != null && !user.getFriends().isEmpty()) {
-            String insertSql = "INSERT INTO friendships (user_id, friend_id) VALUES (?, ?)";
-            List<Object[]> batchArgs = user.getFriends().stream()
-                    .map(friendId -> new Object[]{user.getUserId(), friendId})
-                    .collect(Collectors.toList());
-
-            jdbcTemplate.batchUpdate(insertSql, batchArgs);
-        }
-        log.info("Для пользователя с ID {} успешно обновлен список друзей {}", user.getUserId(), user.getFriends());
     }
 }
