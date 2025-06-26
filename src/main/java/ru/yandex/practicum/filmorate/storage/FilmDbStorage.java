@@ -2,7 +2,6 @@ package ru.yandex.practicum.filmorate.storage;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -39,36 +38,25 @@ public class FilmDbStorage implements FilmStorage {
         parameters.put("release_date", film.getReleaseDate());
         parameters.put("duration", film.getDuration());
         parameters.put("rating_id", film.getMpaId());
-
         long id = simpleJdbcInsert.executeAndReturnKey(parameters).longValue();
+        film.setFilmId(id);
         log.info("В таблицу films добавлен фильм с ID: {}", id);
 
-        return Film.builder()
-                .filmId(id)
-                .name(film.getName())
-                .description(film.getDescription())
-                .releaseDate(film.getReleaseDate())
-                .duration(film.getDuration())
-                .mpaId(film.getMpaId())
-                .build();
+        return film;
     }
 
     @Override
     public void updateFilmGenres(Long filmId, Set<Integer> genreIds) {
         jdbcTemplate.update("DELETE FROM film_genre WHERE film_id = ?", filmId);
-
         String sql = """
                 MERGE INTO film_genre (film_id, genre_id)
                 KEY (film_id, genre_id)
                 VALUES (?, ?)
                 """;
-
         List<Object[]> batchArgs = genreIds.stream()
                 .map(genreId -> new Object[]{filmId, genreId})
                 .collect(Collectors.toList());
-
         jdbcTemplate.batchUpdate(sql, batchArgs);
-
         log.debug("Добавлены жанры: {} для фильма с ID: {}", genreIds, filmId);
     }
 
@@ -87,7 +75,6 @@ public class FilmDbStorage implements FilmStorage {
                 WHERE fg.film_id = ?
                 ORDER BY g.genre_id
                 """;
-
         return new ArrayList<>(jdbcTemplate.query(
                 sql,
                 (rs, rowNum) -> Genre.builder()
@@ -127,19 +114,13 @@ public class FilmDbStorage implements FilmStorage {
     public Optional<Film> findFilmById(Long filmId) {
         String sql = "SELECT film_id, name, description, release_date, duration, rating_id " +
                 "FROM films WHERE film_id = ?";
-
-        try {
-            Film film = jdbcTemplate.queryForObject(
-                    sql,
-                    filmMapper,
-                    filmId
-            );
-            log.debug("Найден фильм с ID: {}", filmId);
-            return Optional.ofNullable(film);
-        } catch (EmptyResultDataAccessException e) {
-            log.debug("Фильм с ID: {} не найден", filmId);
-            return Optional.empty();
-        }
+        Film film = jdbcTemplate.queryForObject(
+                sql,
+                filmMapper,
+                filmId
+        );
+        log.debug("Найден фильм с ID: {}", filmId);
+        return Optional.ofNullable(film);
     }
 
     @Override
@@ -152,7 +133,6 @@ public class FilmDbStorage implements FilmStorage {
                 ORDER BY COUNT(l.user_id) DESC, f.film_id DESC
                 LIMIT ?
                 """;
-
         List<Long> topPopularFilmIds = jdbcTemplate.queryForList(sql, Long.class, count);
         log.debug("Найден следующий список популярных фильмов: {}", topPopularFilmIds);
         return topPopularFilmIds;
@@ -164,7 +144,6 @@ public class FilmDbStorage implements FilmStorage {
         boolean result = Boolean.TRUE.equals(
                 jdbcTemplate.queryForObject(sql, Boolean.class, filmId, userId)
         );
-
         log.debug("Фильм с ID: {} уже лайкнут пользователем с ID: {}", filmId, userId);
         return result;
     }
@@ -175,7 +154,6 @@ public class FilmDbStorage implements FilmStorage {
                 "KEY (film_id, user_id) \n" +
                 "VALUES (?, ?)";
         int affectedRows = jdbcTemplate.update(sql, filmId, userId);
-
         if (affectedRows > 0) {
             log.debug("Фильму с ID: {} добавлен лайк пользователем с ID: {}", filmId, userId);
         } else {
@@ -189,7 +167,6 @@ public class FilmDbStorage implements FilmStorage {
     public boolean deleteLike(Long filmId, Long userId) {
         String sql = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
         int affectedRows = jdbcTemplate.update(sql, filmId, userId);
-
         if (affectedRows > 0) {
             log.debug("Фильму с ID: {} удалён лайк пользователем с ID: {}", filmId, userId);
         } else {
