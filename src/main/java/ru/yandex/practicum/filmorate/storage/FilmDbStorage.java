@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.storage;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -114,13 +115,18 @@ public class FilmDbStorage implements FilmStorage {
     public Optional<Film> findFilmById(Long filmId) {
         String sql = "SELECT film_id, name, description, release_date, duration, rating_id " +
                 "FROM films WHERE film_id = ?";
-        Film film = jdbcTemplate.queryForObject(
-                sql,
-                filmMapper,
-                filmId
-        );
-        log.debug("Найден фильм с ID: {}", filmId);
-        return Optional.ofNullable(film);
+        try {
+            Film film = jdbcTemplate.queryForObject(
+                    sql,
+                    filmMapper,
+                    filmId
+            );
+            log.debug("Найден фильм с ID: {}", filmId);
+            return Optional.ofNullable(film);
+        } catch (EmptyResultDataAccessException e) {
+            log.debug("Фильм с ID: {} не найден", filmId);
+            return Optional.empty();
+        }
     }
 
     @Override
