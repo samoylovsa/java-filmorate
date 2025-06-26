@@ -56,7 +56,6 @@ class FilmDbStorageTest {
                 .isNotNull()
                 .extracting(Film::getFilmId)
                 .isNotNull();
-
         Optional<Film> retrievedFilm = filmStorage.findFilmById(savedFilm.getFilmId());
         assertThat(retrievedFilm).hasValueSatisfying(film ->
                 assertThat(film)
@@ -76,13 +75,11 @@ class FilmDbStorageTest {
                 .duration(150)
                 .mpaId(3)
                 .build();
-
         Film result = filmStorage.updateFilm(updatedFilm);
 
         assertThat(result)
                 .usingRecursiveComparison()
                 .isEqualTo(updatedFilm);
-
         Optional<Film> retrievedFilm = filmStorage.findFilmById(testFilm1.getFilmId());
         assertThat(retrievedFilm)
                 .hasValueSatisfying(film ->
