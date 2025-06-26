@@ -120,4 +120,55 @@ WHERE l.film_id = 1;
 ```
 
 #### Встроенная диаграмма
-![{2E8A4B91-2BF1-431F-8336-9ED074D251F1}.png](../../Desktop/%7B2E8A4B91-2BF1-431F-8336-9ED074D251F1%7D.png)
+```mermaid
+erDiagram
+user ||--o{ friendship : "дружит с"
+user ||--o{ like : "ставит лайки"
+film ||--o{ like : "получает лайки"
+film ||--o{ film_genre : "имеет жанры"
+genre ||--o{ film_genre : "используется в фильмах"
+film }|--|| rating : "имеет рейтинг"
+
+    user {
+        bigint user_id PK
+        varchar(255) email "UNIQUE, NOT NULL"
+        varchar(255) login "UNIQUE, NOT NULL"
+        varchar(255) name
+        date birthday
+    }
+    
+    film {
+        bigint film_id PK
+        varchar(255) name "NOT NULL"
+        text description
+        date release_date
+        integer duration
+        integer rating_id FK
+    }
+    
+    rating {
+        integer rating_id PK
+        varchar(50) name "UNIQUE, NOT NULL"
+        varchar(255) description
+    }
+    
+    genre {
+        integer genre_id PK
+        varchar(50) name "UNIQUE, NOT NULL"
+    }
+    
+    film_genre {
+        bigint film_id PK,FK "CASCADE"
+        integer genre_id PK,FK "CASCADE"
+    }
+    
+    like {
+        bigint film_id PK,FK "CASCADE"
+        bigint user_id PK,FK "CASCADE"
+    }
+    
+    friendship {
+        bigint user_id PK,FK "CASCADE"
+        bigint friend_id PK,FK "CASCADE"
+        varchar(20) status
+    }
