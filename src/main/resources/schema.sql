@@ -1,4 +1,3 @@
--- Удаление таблиц в правильном порядке с учетом зависимостей
 DROP TABLE IF EXISTS friendships CASCADE;
 DROP TABLE IF EXISTS likes CASCADE;
 DROP TABLE IF EXISTS film_genre CASCADE;

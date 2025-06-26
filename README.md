@@ -1,7 +1,4 @@
 # Схема базы данных Filmorate
-## Интерактивная версия схемы
-Схему можно посмотреть на MermaidChart:  
-[🔗 Открыть схему в MermaidChart](https://www.mermaidchart.com/app/projects/0eb7f74b-3f50-4511-9949-4285164fdea2/diagrams/8057e53d-d9e1-463b-8184-42ac54326b03)
 
 ## Примеры SQL запросов к базе данных
 
@@ -125,53 +122,53 @@ WHERE l.film_id = 1;
 #### Встроенная диаграмма
 ```mermaid
 erDiagram
-    user ||--o{ friendship : "1:N (user-friend)"
-    user ||--o{ like : "1:N (user-like)"
-    film ||--o{ like : "1:N (film-like)"
-    film ||--o{ film_genre : "1:N"
-    genre ||--o{ film_genre : "1:N"
-    film }|--|| rating : "N:1"
-    
-    user {
+    users {
         bigint user_id PK
         varchar(255) email
         varchar(255) login
         varchar(255) name
         date birthday
     }
-    
-    film {
+
+    ratings {
+        int rating_id PK
+        varchar(50) name
+        varchar(255) description
+    }
+
+    films {
         bigint film_id PK
         varchar(255) name
         text description
         date release_date
-        integer duration
-        integer rating_id FK
+        int duration
+        int rating_id FK
     }
-    
-    rating {
-        integer rating_id PK
-        varchar(50) name
-        varchar(255) description
-    }
-    
-    genre {
-        integer genre_id PK
+
+    genres {
+        int genre_id PK
         varchar(50) name
     }
-    
+
     film_genre {
         bigint film_id PK,FK
-        integer genre_id PK,FK
+        int genre_id PK,FK
     }
-    
-    like {
+
+    likes {
         bigint film_id PK,FK
         bigint user_id PK,FK
     }
-    
-    friendship {
+
+    friendships {
         bigint user_id PK,FK
         bigint friend_id PK,FK
-        varchar(20) status
     }
+
+    users ||--o{ likes : "Оценивают"
+    users ||--o{ friendships : "Дружат"
+    films ||--o{ likes : "Получают оценки"
+    films ||--o{ film_genre : "Имеют жанры"
+    genres ||--o{ film_genre : "Принадлежат фильмам"
+    ratings ||--o{ films : "Определяют рейтинг"
+    friendships }|--|| users : "Ссылается на пользователя (друг)"

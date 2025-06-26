@@ -1,4 +1,3 @@
--- Заполнение таблицы рейтингов
 MERGE INTO ratings (name, description) KEY(name) VALUES
 ('G', 'Нет возрастных ограничений'),
 ('PG', 'Рекомендуется присутствие родителей'),
@@ -6,7 +5,6 @@ MERGE INTO ratings (name, description) KEY(name) VALUES
 ('R', 'Лицам до 17 лет обязательно присутствие взрослого'),
 ('NC-17', 'Лицам до 18 лет просмотр запрещен');
 
--- Заполнение таблицы жанров
 MERGE INTO genres (name) KEY(name) VALUES
 ('Комедия'),
 ('Драма'),
@@ -15,7 +13,6 @@ MERGE INTO genres (name) KEY(name) VALUES
 ('Документальный'),
 ('Боевик');
 
--- Заполнение таблицы пользователей
 MERGE INTO users (email, login, name, birthday) KEY(email) VALUES
 ('user1@example.com', 'user1', 'John Doe', '1990-05-15'),
 ('user2@example.com', 'user2', 'Jane Smith', '1985-08-21'),
@@ -23,7 +20,6 @@ MERGE INTO users (email, login, name, birthday) KEY(email) VALUES
 ('user4@example.com', 'user4', 'Emily Davis', '2000-11-30'),
 ('admin@example.com', 'admin', 'Admin', '1980-01-01');
 
--- Заполнение таблицы фильмов (исправлены ссылки на таблицу ratings)
 MERGE INTO films (name, description, release_date, duration, rating_id) KEY(name) VALUES
 ('The Matrix', 'Научно-фантастический боевик', '1999-03-31', 136,
   (SELECT rating_id FROM ratings WHERE name = 'R')),
@@ -36,7 +32,6 @@ MERGE INTO films (name, description, release_date, duration, rating_id) KEY(name
 ('Toy Story', 'История игрушек', '1995-11-22', 81,
   (SELECT rating_id FROM ratings WHERE name = 'G'));
 
--- Заполнение таблицы связи фильмов и жанров (исправлены ссылки на таблицы films и genres)
 MERGE INTO film_genre (film_id, genre_id) KEY(film_id, genre_id)
 SELECT f.film_id, g.genre_id
 FROM (VALUES
@@ -52,7 +47,6 @@ FROM (VALUES
 JOIN films f ON f.name = data.film_name
 JOIN genres g ON g.name = data.genre_name;
 
--- Заполнение таблицы лайков (исправлены ссылки на таблицы films и users)
 MERGE INTO likes (film_id, user_id) KEY(film_id, user_id)
 SELECT f.film_id, u.user_id
 FROM (VALUES
@@ -72,7 +66,6 @@ FROM (VALUES
 JOIN films f ON f.name = data.film_name
 JOIN users u ON u.email = data.user_email;
 
--- Заполнение таблицы дружбы (исправлены ссылки на таблицу users)
 MERGE INTO friendships (user_id, friend_id) KEY(user_id, friend_id)
 SELECT u1.user_id, u2.user_id
 FROM (VALUES
