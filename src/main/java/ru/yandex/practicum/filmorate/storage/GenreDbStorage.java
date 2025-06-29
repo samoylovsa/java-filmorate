@@ -56,7 +56,7 @@ public class GenreDbStorage implements GenreStorage {
     @Override
     public Map<Long, List<Genre>> getFilmGenres() {
         String sql = """
-        SELECT fg.film_id, g.genre_id, g.name 
+        SELECT fg.film_id, g.genre_id, g.name
         FROM film_genre fg
         JOIN genres g ON fg.genre_id = g.genre_id
         ORDER BY fg.film_id, g.genre_id
