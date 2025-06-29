@@ -156,9 +156,19 @@ public class FilmService {
         if (filmRequest.getMpa() != null) {
             mpaService.getMpaRatingById(filmRequest.getMpa().getId());
         }
-        if (filmRequest.getGenres() != null) {
-            filmRequest.getGenres().forEach(genre ->
-                    genreService.getGenreById(genre.getId()));
+        if (filmRequest.getGenres() != null && !filmRequest.getGenres().isEmpty()) {
+            Set<Integer> genreIdsFromRequest = filmRequest.getGenres().stream()
+                    .map(Genre::getId)
+                    .collect(Collectors.toSet());
+            Set<Integer> genreIdsFromDb = genreService.getAllGenres().stream()
+                    .map(GenreResponse::getId)
+                    .collect(Collectors.toSet());
+            Set<Integer> invalidIds = genreIdsFromRequest.stream()
+                    .filter(id -> !genreIdsFromDb.contains(id))
+                    .collect(Collectors.toSet());
+            if (!invalidIds.isEmpty()) {
+                throw new ValidationException("Переданы несуществующие жанры: " + invalidIds);
+            }
         }
     }
 
@@ -176,13 +186,13 @@ public class FilmService {
 
     private void updateFilmGenres(Film film, FilmRequest filmRequest) {
         if (filmRequest.getGenres() != null) {
-            Set<Integer> genreIds = filmRequest.getGenres().stream()
+            Set<Integer> genreIdsFromRequest = filmRequest.getGenres().stream()
                     .map(Genre::getId)
                     .collect(Collectors.toSet());
-            if (genreIds.isEmpty()) {
+            if (genreIdsFromRequest.isEmpty()) {
                 filmStorage.deleteAllFilmGenres(film.getFilmId());
             } else {
-                filmStorage.updateFilmGenres(film.getFilmId(), genreIds);
+                filmStorage.updateFilmGenres(film.getFilmId(), genreIdsFromRequest);
             }
         }
     }
