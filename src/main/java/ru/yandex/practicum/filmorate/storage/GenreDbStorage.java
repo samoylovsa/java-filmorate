@@ -9,9 +9,7 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.filmorate.model.Genre;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Slf4j
 @Repository
@@ -53,5 +51,24 @@ public class GenreDbStorage implements GenreStorage {
             throw new DataAccessException("Не удалось найти жанр по ID: " + id, e) {
             };
         }
+    }
+
+    @Override
+    public Map<Long, List<Genre>> getFilmGenres() {
+        String sql = """
+        SELECT fg.film_id, g.genre_id, g.name 
+        FROM film_genre fg
+        JOIN genres g ON fg.genre_id = g.genre_id
+        ORDER BY fg.film_id, g.genre_id
+        """;
+        return jdbcTemplate.query(sql, rs -> {
+            Map<Long, List<Genre>> result = new HashMap<>();
+            while (rs.next()) {
+                Long filmId = rs.getLong("film_id");
+                Genre genre = genreMapper.mapRow(rs, rs.getRow());
+                result.computeIfAbsent(filmId, k -> new ArrayList<>()).add(genre);
+            }
+            return result;
+        });
     }
 }
