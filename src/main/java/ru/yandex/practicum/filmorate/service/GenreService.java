@@ -9,6 +9,7 @@ import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.storage.GenreStorage;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -26,5 +27,9 @@ public class GenreService {
         Genre genre = genreStorage.findGenreById(id)
                 .orElseThrow(() -> new NotFoundException("Жанр с ID: " + id + " не найден"));
         return GenreMapper.mapToGenreResponse(genre);
+    }
+
+    public Map<Long, List<Genre>> getFilmGenresMap() {
+        return genreStorage.getFilmGenres();
     }
 }
